@@ -31,10 +31,14 @@ from src.database.chroma_client import NewsDatabase
 from src.feedback import append_feedback, filter_tags, get_bad_tags
 from src.pipeline import IngestionPipeline
 from src.settings import load_config
+from src.web.logging_service import EventLogger
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Global event logger
+event_logger = EventLogger()
 
 NAV_LINKS = [
     {"label": "Dashboard", "endpoint": "dashboard", "icon": "mdi-view-dashboard"},
@@ -319,13 +323,16 @@ def register_routes(app: Flask) -> None:
                 try:
                     profiler.refresh_context(index)
                     flash(f"Context refreshed for company #{index+1}", "success")
+                    event_logger.log("config", f"Context refreshed for company #{index+1}", level="success")
                 except Exception as e:
                     flash(f"Failed to refresh context: {e}", "danger")
+                    event_logger.log("config", f"Failed to refresh context: {e}", level="error")
             
             elif action == "refresh_all_contexts":
                 profiler = CompanyContextProfiler(cfg["config_path"])
                 profiler.refresh_all_contexts()
                 flash("All company contexts refreshed", "success")
+                event_logger.log("config", "All company contexts refreshed", level="success")
 
             elif action == "add_company":
                 new_name = request.form.get("new_name", "").strip()
@@ -337,6 +344,7 @@ def register_routes(app: Flask) -> None:
                     updated["companies"] = companies
                     save_config(updated)
                     flash("Company added", "success")
+                    event_logger.log("config", f"Added company: {new_name} ({new_url})", level="info")
                 else:
                     flash("Company URL is required", "warning")
 
@@ -350,6 +358,7 @@ def register_routes(app: Flask) -> None:
                         updated["companies"] = companies
                         save_config(updated)
                         flash(f"Removed company: {removed.get('name')}", "success")
+                        event_logger.log("config", f"Removed company: {removed.get('name')}", level="warning")
                     else:
                         flash("Invalid company selected", "warning")
                 except ValueError:
@@ -368,6 +377,7 @@ def register_routes(app: Flask) -> None:
                         updated["companies"] = companies
                         save_config(updated)
                         flash("Company updated", "success")
+                        event_logger.log("config", f"Updated company: {name}", level="info")
                     else:
                         flash("Invalid data or company selected", "warning")
                 except ValueError:
@@ -384,6 +394,7 @@ def register_routes(app: Flask) -> None:
                     updated.setdefault("pipeline", {})["keywords"] = sorted(list(existing))
                     save_config(updated)
                     flash(f"Generated {len(new_keywords)} new keywords", "success")
+                    event_logger.log("config", f"Generated {len(new_keywords)} new keywords with AI", level="success")
                 else:
                     flash("Failed to generate keywords", "warning")
 
@@ -399,6 +410,7 @@ def register_routes(app: Flask) -> None:
                         updated.setdefault("pipeline", {})["keywords"] = keywords
                         save_config(updated)
                         flash(f"Added keyword: {new_kw}", "success")
+                        event_logger.log("config", f"Added keyword: {new_kw}", level="info")
                     else:
                         flash(f"Keyword '{new_kw}' already exists", "warning")
             
@@ -411,6 +423,7 @@ def register_routes(app: Flask) -> None:
                     updated.setdefault("pipeline", {})["keywords"] = keywords
                     save_config(updated)
                     flash(f"Removed keyword: {kw_to_remove}", "success")
+                    event_logger.log("config", f"Removed keyword: {kw_to_remove}", level="info")
 
             elif action == "save_profile_manual":
                 try:
@@ -435,6 +448,7 @@ def register_routes(app: Flask) -> None:
                         
                         profiler._persist_contexts(contexts)
                         flash(f"Profile for {ctx.company_name} updated manually", "success")
+                        event_logger.log("config", f"Profile for {ctx.company_name} updated manually", level="info")
                     else:
                         flash("Invalid profile index", "warning")
                 except ValueError:
@@ -484,6 +498,7 @@ def register_routes(app: Flask) -> None:
                     updated["feeds"] = feeds
                     save_config(updated)
                     flash("Source added", "success")
+                    event_logger.log("config", f"Added source: {new_name} ({new_feed})", level="info")
                 else:
                     flash("Please provide a feed URL", "warning")
             elif action == "save_source":
@@ -498,6 +513,7 @@ def register_routes(app: Flask) -> None:
                     updated["feeds"] = feeds
                     save_config(updated)
                     flash("Source updated", "success")
+                    event_logger.log("config", f"Updated source: {feed_name}", level="info")
                 else:
                     flash("No source selected", "warning")
             elif action == "remove_source":
@@ -507,6 +523,7 @@ def register_routes(app: Flask) -> None:
                     updated["feeds"] = feeds
                     save_config(updated)
                     flash(f"Removed source: {removed.get('name', 'source')}", "success")
+                    event_logger.log("config", f"Removed source: {removed.get('name', 'source')}", level="warning")
                     if selected_index >= len(feeds):
                         selected_index = max(len(feeds) - 1, 0)
                 else:
@@ -582,6 +599,7 @@ def register_routes(app: Flask) -> None:
                     }
                     db.update_article_metadata(article_id, updated_meta)
                     flash("Tags regenerated with AI", "success")
+                    event_logger.log("edit", f"Regenerated tags for article {article_id[:8]}...", level="success")
                     # Refresh article data
                     article = db.get_article(article_id)
                 else:
@@ -599,6 +617,7 @@ def register_routes(app: Flask) -> None:
                 }
                 db.update_article_metadata(article_id, updated_meta)
                 flash("Tags updated", "success")
+                event_logger.log("edit", f"Updated tags for article {article_id[:8]}...", level="info")
                 return redirect(url_for("edit_tags", article_id=article_id))
 
         rationale = article.get("tag_rationale")
@@ -650,6 +669,7 @@ def register_routes(app: Flask) -> None:
                 },
             )
             flash("Tag feedback recorded", "success")
+            event_logger.log("feedback", f"Tag feedback: '{tag}' marked as bad", level="info")
         else:
             flash("No tag provided", "warning")
         
@@ -662,24 +682,34 @@ def register_routes(app: Flask) -> None:
         db = get_db()
         if db.delete_article(article_id):
             flash("Article deleted", "success")
+            event_logger.log("delete", f"Deleted article {article_id[:8]}...", level="warning")
         else:
             flash("Failed to delete article", "danger")
+            event_logger.log("delete", f"Failed to delete article {article_id}", level="error")
         return redirect(url_for("dashboard"))
 
-    # API Endpoints for Granular Pipeline Control
+    @app.route("/api/events")
+    def api_events():
+        limit = int(request.args.get("limit", 50))
+        return jsonify(event_logger.get_recent(limit))
+
     @app.route("/api/pipeline/fetch", methods=["POST"])
     def api_pipeline_fetch():
         cfg = current_config()
         try:
+            event_logger.log("pipeline", "Starting pipeline fetch...", level="info")
             pipeline = IngestionPipeline(cfg["config_path"])
             articles = pipeline.fetch()
+            event_logger.log("pipeline", f"Fetched {len(articles)} articles", level="success", details={"count": len(articles)})
             return jsonify({
                 "status": "success",
                 "count": len(articles),
                 "articles": articles
             })
         except Exception as e:
-            logger.error(f"Pipeline fetch error: {e}")
+            msg = f"Pipeline fetch error: {e}"
+            logger.error(msg)
+            event_logger.log("pipeline", msg, level="error")
             return jsonify({"status": "error", "message": str(e)}), 500
 
     @app.route("/api/pipeline/process", methods=["POST"])
@@ -690,23 +720,41 @@ def register_routes(app: Flask) -> None:
             return jsonify({"status": "error", "message": "No article data provided"}), 400
             
         try:
+            title = article_data.get("title", "Unknown")
+            # event_logger.log("pipeline", f"Processing: {title}", level="info") # Too verbose? maybe handled by UI
+            
             pipeline = IngestionPipeline(cfg["config_path"])
             result = pipeline.process_article(article_data)
+            
+            if result.get("status") == "imported":
+                event_logger.log("pipeline", f"Imported: {title}", level="success", details=result)
+                if result.get("alert"):
+                    event_logger.log("alert", f"Alert triggered: {title}", level="warning", details=result)
+            elif result.get("status") == "skipped":
+                # event_logger.log("pipeline", f"Skipped: {title}", level="warning", details=result)
+                pass
+                
             return jsonify(result)
         except Exception as e:
-            logger.error(f"Pipeline process error: {e}")
+            msg = f"Pipeline process error: {e}"
+            logger.error(msg)
+            event_logger.log("pipeline", msg, level="error")
             return jsonify({"status": "error", "message": str(e)}), 500
 
     @app.route("/api/pipeline/warmup", methods=["POST"])
     def api_pipeline_warmup():
         cfg = current_config()
         try:
+            event_logger.log("system", "Warming up AI models...", level="info")
             ollama = build_ollama(cfg)
             if ollama.warmup():
+                event_logger.log("system", "AI models ready", level="success")
                 return jsonify({"status": "success", "message": "Ollama model warmed up"})
             else:
+                event_logger.log("system", "Warmup failed", level="error")
                 return jsonify({"status": "error", "message": "Warmup failed"}), 500
         except Exception as e:
+            event_logger.log("system", f"Warmup error: {e}", level="error")
             logger.error(f"Warmup error: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -719,10 +767,12 @@ def register_routes(app: Flask) -> None:
         try:
             pipeline = IngestionPipeline(cfg["config_path"])
             pipeline.update_status(count)
+            event_logger.log("pipeline", f"Pipeline run complete. Processed {count} items.", level="success")
             return jsonify({"status": "success", "message": "Status updated"})
         except Exception as e:
             logger.error(f"Status update error: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
+
 
 
 def current_config() -> Dict[str, Any]:

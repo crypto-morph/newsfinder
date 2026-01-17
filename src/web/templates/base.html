@@ -48,10 +48,66 @@
         max-height: 400px;
         overflow: auto;
       }
+      
+      /* System Console */
+      .system-console {
+        position: fixed;
+        bottom: 0;
+        left: 16.6667%; /* Match sidebar width (column is-2) */
+        right: 0;
+        background: #fff;
+        border-top: 1px solid #dbdbdb;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        z-index: 1000;
+        transition: transform 0.3s ease;
+        transform: translateY(calc(100% - 40px)); /* Collapsed state */
+      }
+      .system-console.is-open {
+        transform: translateY(0);
+      }
+      .console-header {
+        height: 40px;
+        background: #f5f5f5;
+        padding: 0 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        border-bottom: 1px solid #dbdbdb;
+      }
+      .console-header:hover {
+        background: #ededed;
+      }
+      .console-body {
+        height: 250px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+      }
+      .console-logs {
+        flex: 1;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 0.8rem;
+        background: #0f1f3d;
+        color: #e5efff;
+        padding: 0.5rem;
+        border-radius: 4px;
+      }
+      .console-logs p {
+        margin-bottom: 2px;
+        line-height: 1.4;
+      }
+      .log-time { color: #666; margin-right: 8px; }
+      .log-info { color: #e5efff; }
+      .log-success { color: #48c774; }
+      .log-warning { color: #ffdd57; }
+      .log-error { color: #f14668; }
+      .log-pipeline { color: #3298dc; }
     </style>
   </head>
   <body>
-    <div class="columns is-gapless">
+    <div class="columns is-gapless mb-0">
       <aside class="column is-2 sidebar">
         <div class="mb-5">
           <p class="title is-4 has-text-white">{{ app_name }}</p>
@@ -75,7 +131,7 @@
           </ul>
         </nav>
       </aside>
-      <main class="column is-10 p-6">
+      <main class="column is-10 p-6" style="margin-bottom: 40px;">
         <div class="mb-5">
           <h1 class="title">{{ page_title or title or app_name }}</h1>
           {% if page_subtitle %}
@@ -96,5 +152,235 @@
         {% block content %}{% endblock %}
       </main>
     </div>
+
+    <!-- Global System Console -->
+    <div id="system-console" class="system-console">
+      <div class="console-header" onclick="SystemConsole.toggle()">
+        <div class="level is-mobile is-flex-grow-1">
+            <div class="level-left">
+                <span class="icon mr-2"><i class="mdi mdi-console"></i></span>
+                <span class="has-text-weight-semibold">System Console</span>
+                <span id="console-status" class="tag is-light ml-3 is-hidden">Idle</span>
+            </div>
+            <div class="level-right">
+                <span class="icon transition-icon" id="console-chevron"><i class="mdi mdi-chevron-up"></i></span>
+            </div>
+        </div>
+      </div>
+      <div class="console-body">
+        <div class="level is-mobile mb-2">
+            <div class="level-left">
+                <button id="console-run-btn" class="button is-small is-primary" onclick="event.stopPropagation(); SystemConsole.runPipeline()">
+                    <span class="icon is-small"><i class="mdi mdi-play"></i></span>
+                    <span>Run Pipeline</span>
+                </button>
+                <button class="button is-small is-text ml-2" onclick="event.stopPropagation(); SystemConsole.clear()">
+                    Clear Logs
+                </button>
+            </div>
+            <div class="level-right">
+                <label class="checkbox is-size-7">
+                    <input type="checkbox" id="auto-scroll" checked onclick="event.stopPropagation()"> Auto-scroll
+                </label>
+            </div>
+        </div>
+        <progress id="console-progress" class="progress is-small is-primary mb-2 is-hidden" value="0" max="100"></progress>
+        <div id="console-logs" class="console-logs">
+            <p class="has-text-grey">System ready.</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const SystemConsole = {
+        isOpen: false,
+        isRunning: false,
+        el: document.getElementById('system-console'),
+        logsEl: document.getElementById('console-logs'),
+        progressEl: document.getElementById('console-progress'),
+        btnEl: document.getElementById('console-run-btn'),
+        chevronEl: document.getElementById('console-chevron'),
+        statusEl: document.getElementById('console-status'),
+        
+        toggle: function() {
+            this.isOpen = !this.isOpen;
+            if (this.isOpen) {
+                this.el.classList.add('is-open');
+                this.chevronEl.innerHTML = '<i class="mdi mdi-chevron-down"></i>';
+            } else {
+                this.el.classList.remove('is-open');
+                this.chevronEl.innerHTML = '<i class="mdi mdi-chevron-up"></i>';
+            }
+        },
+
+        open: function() {
+            if (!this.isOpen) this.toggle();
+        },
+
+        clear: function() {
+            this.logsEl.innerHTML = '';
+        },
+
+        log: function(msg, type='info', details=null) {
+            const line = document.createElement('p');
+            const time = new Date().toLocaleTimeString();
+            let colorClass = `log-${type}`;
+            
+            line.innerHTML = `<span class="log-time">[${time}]</span> <span class="${colorClass}">${msg}</span>`;
+            
+            if (details) {
+                // Add simplified detail view if useful
+                // line.innerHTML += ` <span class="has-text-grey is-size-7">${JSON.stringify(details)}</span>`;
+            }
+
+            this.logsEl.appendChild(line);
+            
+            if (document.getElementById('auto-scroll').checked) {
+                this.logsEl.scrollTop = this.logsEl.scrollHeight;
+            }
+        },
+
+        pollRecentEvents: async function() {
+            if (this.isRunning) return; // Don't poll while running pipeline locally to avoid clutter
+            try {
+                // Only poll if console is somewhat relevant or just periodically
+                const resp = await fetch("{{ url_for('api_events', limit=10) }}");
+                const events = await resp.json();
+                // Simple logic: just show them if they are newer than last check? 
+                // For now, let's just log them if they aren't duplicates.
+                // Actually, let's just use this for initial load or manual refresh.
+                // A true polling system needs a last_timestamp tracker.
+            } catch (e) {
+                console.error(e);
+            }
+        },
+
+        runPipeline: async function() {
+            if (this.isRunning) return;
+            this.isRunning = true;
+            this.open();
+            this.btnEl.classList.add('is-loading');
+            this.btnEl.disabled = true;
+            this.progressEl.classList.remove('is-hidden');
+            this.progressEl.value = 0;
+            this.statusEl.classList.remove('is-hidden');
+            this.statusEl.innerText = "Running...";
+            
+            this.log('Starting pipeline run...', 'pipeline');
+
+            try {
+                // 1. Warmup
+                this.log('Warming up AI models...', 'info');
+                try {
+                    const wResp = await fetch("{{ url_for('api_pipeline_warmup') }}", {method: 'POST'});
+                    const wData = await wResp.json();
+                    if (wData.status === 'success') this.log('AI models ready.', 'success');
+                    else this.log('Warmup warning: ' + wData.message, 'warning');
+                } catch (e) {
+                    this.log('Warmup skipped (network): ' + e.message, 'warning');
+                }
+
+                // 2. Fetch
+                this.log('Fetching articles...', 'info');
+                const fResp = await fetch("{{ url_for('api_pipeline_fetch') }}", {method: 'POST'});
+                const fData = await fResp.json();
+                
+                if (fData.status === 'error') throw new Error(fData.message);
+                
+                const articles = fData.articles || [];
+                this.log(`Found ${articles.length} articles.`, 'info');
+                
+                if (articles.length === 0) {
+                    this.log('No new articles to process.', 'warning');
+                } else {
+                    // 3. Process Loop
+                    let processed = 0;
+                    for (const article of articles) {
+                        this.statusEl.innerText = `Processing ${processed+1}/${articles.length}`;
+                        this.log(`Analyzing: ${article.title.substring(0, 50)}...`, 'info');
+                        
+                        try {
+                            const pResp = await fetch("{{ url_for('api_pipeline_process') }}", {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify(article)
+                            });
+                            const res = await pResp.json();
+                            
+                            if (res.status === 'imported') {
+                                this.log(`Imported: ${article.title}`, 'success');
+                                if (res.alert) this.log('!!! ALERT TRIGGERED !!!', 'error');
+                            } else if (res.status === 'skipped') {
+                                this.log(`Skipped: ${article.title} (${res.reason})`, 'warning');
+                            }
+                        } catch (err) {
+                            this.log(`Error processing ${article.title}: ${err.message}`, 'error');
+                        }
+                        
+                        processed++;
+                        this.progressEl.value = (processed / articles.length) * 100;
+                    }
+                    
+                    // 4. Complete
+                    await fetch("{{ url_for('api_pipeline_complete') }}", {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({count: processed})
+                    });
+                }
+
+                this.log('Pipeline run complete.', 'success');
+                this.statusEl.innerText = "Complete";
+                
+                // Refresh page after short delay to show new data
+                setTimeout(() => location.reload(), 1500);
+
+            } catch (e) {
+                this.log(`Pipeline failed: ${e.message}`, 'error');
+                this.statusEl.innerText = "Error";
+            } finally {
+                this.isRunning = false;
+                this.btnEl.classList.remove('is-loading');
+                this.btnEl.disabled = false;
+                setTimeout(() => {
+                    this.progressEl.classList.add('is-hidden');
+                    this.statusEl.classList.add('is-hidden');
+                }, 3000);
+            }
+        },
+        
+        // Initial loader for persisted events
+        loadHistory: async function() {
+            try {
+                const resp = await fetch("{{ url_for('api_events', limit=20) }}");
+                const events = await resp.json();
+                // Reverse to show oldest first in this context if we append
+                events.reverse().forEach(e => {
+                    // Map event types to styles
+                    let type = 'info';
+                    if (e.level === 'error') type = 'error';
+                    if (e.level === 'warning') type = 'warning';
+                    if (e.level === 'success') type = 'success';
+                    if (e.type === 'pipeline') type = 'pipeline';
+                    
+                    // Convert timestamp
+                    const time = new Date(e.timestamp * 1000).toLocaleTimeString();
+                    const line = document.createElement('p');
+                    line.innerHTML = `<span class="log-time" style="opacity:0.6">[${time}]</span> <span class="log-${type}">${e.message}</span>`;
+                    this.logsEl.appendChild(line);
+                });
+                // Scroll to bottom
+                this.logsEl.scrollTop = this.logsEl.scrollHeight;
+            } catch (e) {
+                console.warn("Could not load event history", e);
+            }
+        }
+      };
+
+      // Load history on init
+      document.addEventListener('DOMContentLoaded', () => {
+          SystemConsole.loadHistory();
+      });
+    </script>
   </body>
 </html>
