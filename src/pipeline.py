@@ -20,7 +20,11 @@ class IngestionPipeline:
     def __init__(self, config_path: str = "config.yaml"):
         self.config = load_config(config_path)
         feeds = self.config.get("feeds", [])
-        self.aggregator = RSSNewsAggregator(feed_urls=feeds)
+        # Enable document caching to speed up re-runs
+        self.aggregator = RSSNewsAggregator(
+            feed_urls=feeds, 
+            cache_dir="document-cache"
+        )
         self.llm_client = OllamaClient(
             base_url=self.config["llm"]["base_url"],
             model=self.config["llm"]["model"],
@@ -35,7 +39,17 @@ class IngestionPipeline:
     def fetch(self) -> List[Dict]:
         """Fetch raw articles from all configured feeds."""
         limit = self.config["pipeline"].get("articles_per_feed", 3)
-        return self.aggregator.fetch_recent_articles(limit_per_feed=limit)
+        
+        # Callback to check if article already exists in DB
+        def skip_if_exists(url: str) -> bool:
+            # We use the same ID generation logic as process_article
+            article_id = self._article_id(url)
+            return self.db.article_exists(article_id)
+
+        return self.aggregator.fetch_recent_articles(
+            limit_per_feed=limit, 
+            skip_callback=skip_if_exists
+        )
 
     def process_article(self, article: Dict) -> Dict:
         """

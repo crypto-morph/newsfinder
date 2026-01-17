@@ -645,6 +645,19 @@ def register_routes(app: Flask) -> None:
             logger.error(f"Pipeline process error: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
 
+    @app.route("/api/pipeline/warmup", methods=["POST"])
+    def api_pipeline_warmup():
+        cfg = current_config()
+        try:
+            ollama = build_ollama(cfg)
+            if ollama.warmup():
+                return jsonify({"status": "success", "message": "Ollama model warmed up"})
+            else:
+                return jsonify({"status": "error", "message": "Warmup failed"}), 500
+        except Exception as e:
+            logger.error(f"Warmup error: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+
 
 def current_config() -> Dict[str, Any]:
     return current_app.config["NEWSFINDER_CONFIG"]

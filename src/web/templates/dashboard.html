@@ -198,6 +198,21 @@
     }
 
     try {
+      // Step 1: Warmup
+      log('Warming up AI models (this may take a few seconds)...', 'blue');
+      try {
+        const warmupResp = await fetch("{{ url_for('api_pipeline_warmup') }}", { method: 'POST' });
+        const warmupData = await warmupResp.json();
+        if (warmupData.status === 'success') {
+             log('AI models ready.', 'green');
+        } else {
+             log('Warmup warning: ' + warmupData.message, 'orange');
+        }
+      } catch (e) {
+        log('Warmup skipped (network error): ' + e.message, 'orange');
+      }
+
+      // Step 2: Fetch
       log('Fetching articles from feeds...');
       
       const fetchResp = await fetch("{{ url_for('api_pipeline_fetch') }}", {

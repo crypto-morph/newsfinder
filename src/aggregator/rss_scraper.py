@@ -4,12 +4,18 @@ from bs4 import BeautifulSoup
 from typing import Any, List, Dict, Optional
 import logging
 import time
+import os
+import json
+import hashlib
 
 logger = logging.getLogger(__name__)
 
 class RSSNewsAggregator:
-    def __init__(self, feed_urls: Optional[List] = None):
+    def __init__(self, feed_urls: Optional[List] = None, cache_dir: Optional[str] = None):
         self.feed_urls = feed_urls or []
+        self.cache_dir = cache_dir
+        if self.cache_dir:
+            os.makedirs(self.cache_dir, exist_ok=True)
 
     def _fetch_feed(self, feed_url: str) -> tuple[Optional[feedparser.FeedParserDict], str]:
         try:
@@ -23,9 +29,19 @@ class RSSNewsAggregator:
 
         return feedparser.parse(response.content), ""
 
-    def fetch_recent_articles(self, limit_per_feed: int = 3) -> List[Dict]:
+    def _get_cache_path(self, url: str) -> Optional[str]:
+        if not self.cache_dir:
+            return None
+        url_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()
+        return os.path.join(self.cache_dir, f"{url_hash}.json")
+
+    def fetch_recent_articles(self, limit_per_feed: int = 3, skip_callback: Optional[callable] = None) -> List[Dict]:
         """
         Fetches recent articles from all configured RSS feeds.
+        
+        Args:
+            limit_per_feed: Max number of articles to fetch per feed.
+            skip_callback: Optional function(url) -> bool. If True, article is skipped (not scraped).
         """
         all_articles = []
         
@@ -45,8 +61,11 @@ class RSSNewsAggregator:
                 source_name = feed_name or parsed_feed.feed.get('title', feed_url)
                 
                 for entry in parsed_feed.entries[:limit_per_feed]:
-                    # Basic deduplication check could happen here, but handled in pipeline
-                    
+                    # Check if we should skip this article before scraping
+                    if skip_callback and skip_callback(entry.link):
+                        logger.debug(f"Skipping known article: {entry.title}")
+                        continue
+
                     content = self._scrape_article_content(entry.link)
                     if not content:
                         continue
@@ -131,6 +150,19 @@ class RSSNewsAggregator:
         Scrapes the main text content from a news article URL.
         Includes heuristics for common UK news sites.
         """
+        # Check cache first
+        cache_path = self._get_cache_path(url)
+        if cache_path and os.path.exists(cache_path):
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    # Simple expiry check (optional, let's say 30 days)
+                    if time.time() - data.get("timestamp", 0) < 30 * 86400:
+                        logger.debug(f"Cache hit for {url}")
+                        return data.get("content", "")
+            except Exception as e:
+                logger.warning(f"Failed to read cache for {url}: {e}")
+
         try:
             # Add a generic User-Agent to avoid 403s
             headers = {
@@ -173,6 +205,18 @@ class RSSNewsAggregator:
             # Filter out very short content (likely errors or just cookie warnings)
             if len(article_text) < 200:
                 return ""
+            
+            # Save to cache
+            if cache_path:
+                try:
+                    with open(cache_path, "w", encoding="utf-8") as f:
+                        json.dump({
+                            "url": url,
+                            "timestamp": time.time(),
+                            "content": article_text
+                        }, f)
+                except Exception as e:
+                    logger.warning(f"Failed to write cache for {url}: {e}")
                 
             return article_text
 

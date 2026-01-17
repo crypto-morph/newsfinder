@@ -24,6 +24,22 @@ class OllamaClient:
         except requests.exceptions.RequestException:
             return False
 
+    def warmup(self) -> bool:
+        """
+        Send a lightweight request to force the model to load into memory.
+        Returns True if successful.
+        """
+        logger.info(f"Warming up Ollama model: {self.model}")
+        try:
+            # Simple generation request
+            self.generate_json('{"test": "warmup"}', timeout=60)
+            # Also warmup embedding model if possible (by generating one embedding)
+            self.generate_embedding("warmup")
+            return True
+        except Exception as e:
+            logger.error(f"Warmup failed: {e}")
+            return False
+
     def generate_embedding(self, text: str) -> List[float]:
         """Generate vector embedding for a given text."""
         if not text:

@@ -12,6 +12,9 @@ chroma_db/
 logs/
 *.log
 
+# Cache
+document-cache/
+
 # IDE
 .vscode/
 .idea/
