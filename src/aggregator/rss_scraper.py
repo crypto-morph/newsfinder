@@ -65,8 +65,16 @@ class RSSNewsAggregator:
                     if skip_callback and skip_callback(entry.link):
                         logger.debug(f"Skipping known article: {entry.title}")
                         continue
+                    
+                    # Prepare metadata for caching
+                    meta = {
+                        "title": entry.title,
+                        "published": entry.get('published', time.strftime("%a, %d %b %Y %H:%M:%S +0000")),
+                        "source": source_name,
+                        "summary": self._clean_summary(entry.get("summary", ""))
+                    }
 
-                    content = self._scrape_article_content(entry.link)
+                    content = self._scrape_article_content(entry.link, metadata=meta)
                     if not content:
                         continue
                         
@@ -145,7 +153,7 @@ class RSSNewsAggregator:
         except Exception:
             return text
 
-    def _scrape_article_content(self, url: str) -> str:
+    def _scrape_article_content(self, url: str, metadata: Optional[Dict] = None) -> str:
         """
         Scrapes the main text content from a news article URL.
         Includes heuristics for common UK news sites.
@@ -156,12 +164,29 @@ class RSSNewsAggregator:
             try:
                 with open(cache_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    # Simple expiry check (optional, let's say 30 days)
-                    if time.time() - data.get("timestamp", 0) < 30 * 86400:
-                        logger.debug(f"Cache hit for {url}")
-                        return data.get("content", "")
+                    
+                # Check if we need to backfill metadata
+                cache_updated = False
+                if metadata:
+                    for k, v in metadata.items():
+                        if k not in data:
+                            data[k] = v
+                            cache_updated = True
+                
+                # Update file if we added metadata
+                if cache_updated:
+                    try:
+                        with open(cache_path, "w", encoding="utf-8") as f:
+                            json.dump(data, f)
+                    except Exception as e:
+                        logger.warning(f"Failed to update cache metadata for {url}: {e}")
+
+                # Simple expiry check (optional, let's say 30 days)
+                if time.time() - data.get("timestamp", 0) < 30 * 86400:
+                    logger.debug(f"Cache hit for {url}")
+                    return data.get("content", "")
             except Exception as e:
-                logger.warning(f"Failed to read cache for {url}: {e}")
+                logger.warning(f"Failed to read/update cache for {url}: {e}")
 
         try:
             # Add a generic User-Agent to avoid 403s
@@ -209,12 +234,16 @@ class RSSNewsAggregator:
             # Save to cache
             if cache_path:
                 try:
+                    cache_data = {
+                        "url": url,
+                        "timestamp": time.time(),
+                        "content": article_text
+                    }
+                    if metadata:
+                        cache_data.update(metadata)
+                        
                     with open(cache_path, "w", encoding="utf-8") as f:
-                        json.dump({
-                            "url": url,
-                            "timestamp": time.time(),
-                            "content": article_text
-                        }, f)
+                        json.dump(cache_data, f)
                 except Exception as e:
                     logger.warning(f"Failed to write cache for {url}: {e}")
                 

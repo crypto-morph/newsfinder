@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% set page_title = "Article Viewer" %}
+{% set page_subtitle = "Browse all processed and cached articles" %}
+
+{% block content %}
+
+<div class="tabs is-boxed">
+  <ul>
+    <li class="is-active" id="tab-processed" onclick="switchTab('processed')">
+      <a>
+        <span class="icon is-small"><i class="mdi mdi-check-circle-outline"></i></span>
+        <span>Processed ({{ processed|length }})</span>
+      </a>
+    </li>
+    <li id="tab-skipped" onclick="switchTab('skipped')">
+      <a>
+        <span class="icon is-small"><i class="mdi mdi-file-hidden"></i></span>
+        <span>Skipped / Cached ({{ skipped|length }})</span>
+      </a>
+    </li>
+  </ul>
+</div>
+
+<div id="content-processed">
+    {% if processed %}
+    <div class="table-container">
+        <table class="table is-fullwidth is-striped is-hoverable">
+            <thead>
+                <tr>
+                    <th style="width: 30%;">Article</th>
+                    <th>Analysis & Reasoning</th>
+                    <th style="width: 15%;">Scores</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in processed %}
+                <tr>
+                    <td>
+                        <p class="title is-6 mb-1">
+                            <a href="{{ article.url }}" target="_blank" class="has-text-link">
+                                {{ article.title }}
+                            </a>
+                        </p>
+                        <p class="is-size-7 has-text-grey mb-2">
+                            {{ article.source }} · {{ article.published_date }}
+                        </p>
+                        <div class="tags">
+                            {% for tag in article.topic_tags %}
+                            <span class="tag is-light is-info">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>
+                        <p class="is-size-6 mb-2">{{ article.summary_text }}</p>
+                        {% if article.relevance_reasoning %}
+                        <article class="message is-small is-primary is-light">
+                            <div class="message-body py-2 px-3">
+                                <strong>Why:</strong> {{ article.relevance_reasoning }}
+                            </div>
+                        </article>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="field is-grouped is-grouped-multiline">
+                            <div class="control">
+                                <span class="tag is-medium {% if article.relevance_score >= 7 %}is-success{% elif article.relevance_score >= 4 %}is-warning{% else %}is-light{% endif %}">
+                                    R: {{ article.relevance_score }}
+                                </span>
+                            </div>
+                            <div class="control">
+                                <span class="tag is-medium {% if article.impact_score >= 7 %}is-danger{% elif article.impact_score >= 4 %}is-warning{% else %}is-light{% endif %}">
+                                    I: {{ article.impact_score }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                             <a class="button is-small is-text" href="{{ url_for('edit_tags', article_id=article.id) }}">
+                                Edit Details
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="notification is-info is-light">
+        No processed articles found in the database. Run the pipeline to ingest news.
+    </div>
+    {% endif %}
+</div>
+
+<div id="content-skipped" class="is-hidden">
+    <div class="notification is-light mb-4">
+        These articles were fetched and cached but <strong>not processed</strong> (likely filtered out by keywords or duplicates).
+    </div>
+    {% if skipped %}
+    <div class="table-container">
+        <table class="table is-fullwidth is-striped is-hoverable">
+            <thead>
+                <tr>
+                    <th>Article</th>
+                    <th>Summary Preview</th>
+                    <th>Date Cached</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in skipped %}
+                <tr>
+                    <td>
+                        <p class="has-text-weight-medium">
+                            <a href="{{ article.url }}" target="_blank">{{ article.title }}</a>
+                        </p>
+                        <p class="is-size-7 has-text-grey">{{ article.source }}</p>
+                    </td>
+                    <td class="is-size-7">
+                        {{ article.summary|truncate(150) }}
+                    </td>
+                    <td class="is-size-7 has-text-grey-light">
+                        <!-- Timestamp to readable date -->
+                        <span class="cached-time" data-ts="{{ article.timestamp }}"></span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No skipped articles in cache.</p>
+    {% endif %}
+</div>
+
+<script>
+    function switchTab(tabName) {
+        // Tabs
+        document.querySelectorAll('.tabs li').forEach(li => li.classList.remove('is-active'));
+        document.getElementById('tab-' + tabName).classList.add('is-active');
+        
+        // Content
+        document.getElementById('content-processed').classList.add('is-hidden');
+        document.getElementById('content-skipped').classList.add('is-hidden');
+        document.getElementById('content-' + tabName).classList.remove('is-hidden');
+    }
+
+    // Format timestamps
+    document.querySelectorAll('.cached-time').forEach(span => {
+        const ts = parseFloat(span.dataset.ts);
+        if (ts) {
+            span.innerText = new Date(ts * 1000).toLocaleString();
+        }
+    });
+</script>
+
+{% endblock %}

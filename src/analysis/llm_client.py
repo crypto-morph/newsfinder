@@ -75,6 +75,7 @@ class OllamaClient:
         Analyze the article above and provide a JSON response with the following fields:
         - summary: A concise 2-3 sentence summary.
         - relevance_score: Integer 1-10 (how relevant is this to the PRIMARY company's goals?).
+        - relevance_reasoning: A short sentence explaining WHY this score was given.
         - impact_score: Integer 1-10 (how big is the potential impact on the market or competitors?).
         - key_entities: A list of important companies, people, or technologies mentioned.
 
@@ -88,6 +89,7 @@ class OllamaClient:
             return {
                 "summary": "LLM analysis unavailable",
                 "relevance_score": 0,
+                "relevance_reasoning": "Analysis failed",
                 "impact_score": 0,
                 "key_entities": [],
             }
@@ -95,6 +97,7 @@ class OllamaClient:
         return {
             "summary": response.get("summary", "No summary generated"),
             "relevance_score": response.get("relevance_score", 0),
+            "relevance_reasoning": response.get("relevance_reasoning", ""),
             "impact_score": response.get("impact_score", 0),
             "key_entities": response.get("key_entities", []),
         }

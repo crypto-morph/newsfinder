@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 NAV_LINKS = [
     {"label": "Dashboard", "endpoint": "dashboard", "icon": "mdi-view-dashboard"},
+    {"label": "Articles", "endpoint": "articles_view", "icon": "mdi-file-document-multiple-outline"},
     {"label": "RAG Explorer", "endpoint": "explore", "icon": "mdi-magnify"},
     {"label": "Discovery", "endpoint": "discovery", "icon": "mdi-compass-outline"},
     {"label": "Sources", "endpoint": "sources", "icon": "mdi-rss"},
@@ -86,6 +87,37 @@ def create_app(config_path: str = "config.yaml") -> Flask:
         }
 
     return app
+
+
+def load_cached_articles(cache_dir: str = "document-cache") -> List[Dict[str, Any]]:
+    if not os.path.exists(cache_dir):
+        return []
+    
+    cached = []
+    try:
+        for filename in os.listdir(cache_dir):
+            if filename.endswith(".json"):
+                filepath = os.path.join(cache_dir, filename)
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        # We only need metadata for the list
+                        cached.append({
+                            "url": data.get("url"),
+                            "title": data.get("title", "Unknown Title"),
+                            "source": data.get("source", "Unknown Source"),
+                            "published": data.get("published", ""),
+                            "summary": data.get("summary", ""),
+                            "timestamp": data.get("timestamp", 0)
+                        })
+                except Exception as e:
+                    logger.warning(f"Failed to load cache file {filename}: {e}")
+    except Exception as e:
+        logger.error(f"Error reading cache dir: {e}")
+        
+    # Sort by timestamp desc
+    cached.sort(key=lambda x: x["timestamp"], reverse=True)
+    return cached
 
 
 def register_routes(app: Flask) -> None:
@@ -164,6 +196,26 @@ def register_routes(app: Flask) -> None:
             company_filter=bool(company_filter),
             goal_filter=goal_filter,
             available_goals=goals,
+        )
+
+    @app.route("/articles")
+    def articles_view():
+        db = get_db()
+        processed_articles = db.get_all_articles(limit=200) # reasonable limit for view
+        cached_articles = load_cached_articles()
+        
+        # Determine skipped items (in cache but not in processed DB)
+        processed_urls = set(a.get("url") for a in processed_articles if a.get("url"))
+        skipped_articles = [
+            a for a in cached_articles 
+            if a.get("url") not in processed_urls
+        ]
+        
+        return render_template(
+            "articles.html",
+            processed=processed_articles,
+            skipped=skipped_articles,
+            active_page="articles_view"
         )
 
     @app.route("/explore")
@@ -656,6 +708,20 @@ def register_routes(app: Flask) -> None:
                 return jsonify({"status": "error", "message": "Warmup failed"}), 500
         except Exception as e:
             logger.error(f"Warmup error: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    @app.route("/api/pipeline/complete", methods=["POST"])
+    def api_pipeline_complete():
+        cfg = current_config()
+        data = request.json
+        count = data.get("count", 0) if data else 0
+        
+        try:
+            pipeline = IngestionPipeline(cfg["config_path"])
+            pipeline.update_status(count)
+            return jsonify({"status": "success", "message": "Status updated"})
+        except Exception as e:
+            logger.error(f"Status update error: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
 
 

@@ -37,7 +37,7 @@ pipeline:
     impact: 7
 llm:
   base_url: http://localhost:11434
-  model: llama3.1:8b
+  model: qwen2.5:1.5b
   embedding_model: all-minilm
 storage:
   chroma_dir: chroma_db

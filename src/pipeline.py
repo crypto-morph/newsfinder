@@ -100,6 +100,7 @@ class IngestionPipeline:
             "published_date": article["published"],
             "source": article["source"],
             "relevance_score": analysis.get("relevance_score", 0),
+            "relevance_reasoning": analysis.get("relevance_reasoning", ""),
             "impact_score": analysis.get("impact_score", 0),
             "summary_text": analysis.get("summary", ""),
             "key_entities": analysis.get("key_entities", []),
@@ -145,7 +146,7 @@ class IngestionPipeline:
             if result["status"] == "imported":
                 processed.append(result["metadata"])
 
-        self._write_status(len(processed))
+        self.update_status(len(processed))
         return processed
 
     def _load_company_context(self) -> str:
@@ -170,7 +171,7 @@ class IngestionPipeline:
             metadata.get("impact_score"),
         )
 
-    def _write_status(self, articles_processed: int) -> None:
+    def update_status(self, articles_processed: int) -> None:
         status_file = self.config["storage"]["status_file"]
         status = {
             "last_run": datetime.utcnow().isoformat(),

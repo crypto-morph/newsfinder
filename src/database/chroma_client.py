@@ -61,6 +61,30 @@ class NewsDatabase:
         """
         return self.collection.count()
 
+    def get_all_articles(self, limit: int = 1000) -> List[Dict]:
+        """Return all articles in the database up to a limit."""
+        data = self.collection.peek(limit=limit)
+        if not data:
+            return []
+
+        ids = data.get("ids", [])
+        documents = data.get("documents", [])
+        metadatas = data.get("metadatas", [])
+
+        articles: List[Dict] = []
+        for idx, article_id in enumerate(ids):
+            metadata = metadatas[idx] if idx < len(metadatas) else {}
+            summary = documents[idx] if idx < len(documents) else ""
+            article = {"id": article_id, "summary_text": summary}
+            article.update(metadata or {})
+            articles.append(article)
+
+        # Sort by published date desc if available
+        # Note: published_date string format might vary, so this is best effort
+        articles.sort(key=lambda x: x.get("published_date", ""), reverse=True)
+        
+        return articles
+
     def list_recent_articles(self, limit: int = 10) -> List[Dict]:
         """Peek into the collection and return recent articles with metadata."""
         data = self.collection.peek(limit=limit * 3)

@@ -263,6 +263,17 @@
         progressBar.value = (processed / articles.length) * 100;
       }
       
+      // Update status on server
+      try {
+        await fetch("{{ url_for('api_pipeline_complete') }}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({count: processed})
+        });
+      } catch (e) {
+        log('Failed to update status: ' + e.message, 'orange');
+      }
+
       log('Pipeline complete! Refreshing...', 'green');
       setTimeout(() => location.reload(), 2000);
       
