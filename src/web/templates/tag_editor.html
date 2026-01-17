@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% set page_title = "Edit Tags" %}
+{% set page_subtitle = "Review and adjust topic and entity tags" %}
+
+{% block content %}
+<div class="columns">
+  <div class="column is-two-thirds">
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title">{{ article.title }}</p>
+      </header>
+      <div class="card-content">
+        <p class="is-size-7 has-text-grey">{{ article.published_date }} · {{ article.source }}</p>
+        <p class="mt-3">{{ article.summary_text }}</p>
+        {% if article.url %}
+        <a class="button is-link is-light mt-3" href="{{ article.url }}" target="_blank">Read source</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mt-5">
+      <header class="card-header">
+        <p class="card-header-title">Why these tags?</p>
+      </header>
+      <div class="card-content">
+        {% if rationale %}
+        <p>{{ rationale }}</p>
+        {% else %}
+        <p>No rationale generated yet. Save tags to update.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="column">
+    <div class="card mb-5">
+      <header class="card-header">
+        <p class="card-header-title">Report Bad Tags</p>
+      </header>
+      <div class="card-content">
+        <p class="help mb-3">Flag tags that are irrelevant or incorrect.</p>
+        {% if article.topic_tags %}
+        <div class="tags">
+          {% for tag in article.topic_tags %}
+          <div class="tag is-info is-light">
+            {{ tag }}
+            <details class="ml-2">
+              <summary class="is-size-7 is-clickable has-text-danger">Report</summary>
+              <form method="post" action="{{ url_for('tag_feedback') }}" class="mt-2 box" style="position: absolute; z-index: 20; min-width: 200px;">
+                <input type="hidden" name="article_id" value="{{ article.id }}" />
+                <input type="hidden" name="tag" value="{{ tag }}" />
+                <div class="field">
+                  <div class="control">
+                    <input class="input is-small" name="reason" placeholder="Why is this tag bad?" required />
+                  </div>
+                </div>
+                <div class="buttons is-right">
+                  <button class="button is-small is-danger">Confirm</button>
+                </div>
+              </form>
+            </details>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="is-size-7 has-text-grey">No topic tags found.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title">Edit Tags</p>
+      </header>
+      <div class="card-content">
+        <form method="post">
+          <div class="field">
+            <label class="label">Topic Tags</label>
+            <div class="control">
+              <textarea class="textarea" name="topic_tags" rows="4">{{ topic_tags }}</textarea>
+            </div>
+            <p class="help">Comma-separated topics (2–4 words each).</p>
+          </div>
+          <div class="field">
+            <label class="label">Entity Tags</label>
+            <div class="control">
+              <textarea class="textarea" name="entity_tags" rows="3">{{ entity_tags }}</textarea>
+            </div>
+            <p class="help">Companies, people, technologies mentioned.</p>
+          </div>
+          <div class="field">
+            <label class="label">Tag Rationale</label>
+            <div class="control">
+              <textarea class="textarea" name="tag_rationale" rows="3">{{ rationale }}</textarea>
+            </div>
+          </div>
+          <div class="field is-grouped">
+            <div class="control is-expanded">
+              <button class="button is-primary is-fullwidth" name="action" value="save">Save Tags</button>
+            </div>
+            <div class="control">
+              <button class="button is-info is-light" name="action" value="regenerate" title="Regenerate tags using AI">
+                <span class="icon"><i class="mdi mdi-robot"></i></span>
+                <span>Regenerate</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

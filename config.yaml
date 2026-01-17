@@ -1,0 +1,53 @@
+companies:
+- name: Bluecrest Wellness
+  url: https://bluecrestwellness.com/
+- name: RandoxHealth
+  url: https://randoxhealth.com/en-GB/
+- name: Qured
+  url: https://www.qured.com/
+feeds:
+- name: BBC World
+  url: https://feeds.bbci.co.uk/news/world/rss.xml
+- name: BBC Health
+  url: https://feeds.bbci.co.uk/news/health/rss.xml
+- name: Guardian Rss
+  url: https://www.theguardian.com/uk/rss
+pipeline:
+  articles_per_feed: 3
+  keywords:
+  - blood test
+  - bluecrest
+  - corporate wellness
+  - diagnostics
+  - employee health
+  - health and wellness
+  - health screening
+  - healthcare
+  - healthy lifestyle
+  - occupational health
+  - preventive care
+  - preventive health
+  - screening services
+  - telemedicine
+  - wellness
+  - wellness programs
+  - workplace wellness
+  alert_threshold:
+    relevance: 7
+    impact: 7
+llm:
+  base_url: http://localhost:11434
+  model: llama3.1:8b
+  embedding_model: all-minilm
+storage:
+  chroma_dir: chroma_db
+  alerts_log: logs/alerts.log
+  status_file: logs/status.json
+  context_cache: logs/company_context.txt
+  feedback_log: logs/tag_feedback.jsonl
+scheduler:
+  enabled: true
+  interval_minutes: 60
+web:
+  host: 0.0.0.0
+  port: 5000

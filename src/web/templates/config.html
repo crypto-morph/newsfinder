@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+{% set page_title = "Config & Company Context" %}
+{% set page_subtitle = "Manage Bluecrest profile, keywords, and refresh context" %}
+
+{% block content %}
+<div class="columns">
+  <div class="column is-one-third">
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title">Monitored Companies</p>
+      </header>
+      <div class="card-content">
+        {% for company in config.companies %}
+        <form method="post" class="mb-3">
+            <input type="hidden" name="index" value="{{ loop.index0 }}">
+            <div class="field">
+                <label class="label is-small">
+                    {% if loop.first %}Primary Company{% else %}Competitor / Peer {{ loop.index0 }}{% endif %}
+                </label>
+                <div class="field has-addons">
+                    <p class="control">
+                        <input class="input is-small" type="text" name="name" value="{{ company.name }}" placeholder="Name">
+                    </p>
+                    <p class="control is-expanded">
+                        <input class="input is-small" type="url" name="url" value="{{ company.url }}" placeholder="https://...">
+                    </p>
+                    <p class="control">
+                        <button class="button is-small is-info is-light" name="action" value="save_company" title="Save changes">
+                            <span class="icon"><i class="mdi mdi-content-save"></i></span>
+                        </button>
+                    </p>
+                    <p class="control">
+                        <button class="button is-small is-text" name="action" value="refresh_context" title="Refresh this profile">
+                            <span class="icon"><i class="mdi mdi-refresh"></i></span>
+                        </button>
+                    </p>
+                    <p class="control">
+                         <button class="button is-small is-danger is-light" name="action" value="remove_company" title="Remove company" onclick="return confirm('Remove {{ company.name }}?');">
+                            <span class="icon"><i class="mdi mdi-delete"></i></span>
+                        </button>
+                    </p>
+                </div>
+            </div>
+        </form>
+        {% endfor %}
+
+        <hr class="my-3">
+        <p class="is-size-7 has-text-weight-bold mb-2">Add New Company</p>
+        <form method="post">
+            <div class="field has-addons">
+                <p class="control">
+                    <input class="input is-small" type="text" name="new_name" placeholder="Name (e.g. Rival Corp)">
+                </p>
+                <p class="control is-expanded">
+                    <input class="input is-small" type="url" name="new_url" placeholder="https://rival.com">
+                </p>
+                <p class="control">
+                    <button class="button is-small is-primary" name="action" value="add_company">Add</button>
+                </p>
+            </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mt-5">
+      <header class="card-header">
+        <p class="card-header-title">Keyword Management</p>
+      </header>
+      <div class="card-content">
+        <div class="level is-mobile mb-4">
+          <div class="level-left">
+            <p class="is-size-7 has-text-grey">Filtering keywords for news ingestion.</p>
+          </div>
+          <div class="level-right">
+             <form method="post" onsubmit="document.getElementById('generate-btn').classList.add('is-loading')">
+              <button id="generate-btn" class="button is-small is-info is-light" name="action" value="generate_keywords" title="Generate keywords from primary company context">
+                <span class="icon"><i class="mdi mdi-robot"></i></span>
+                <span>Generate with AI</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div class="tags are-medium mb-5">
+          {% for kw in config.pipeline.keywords %}
+          <div class="tag is-info is-light">
+            {{ kw }}
+            <form method="post" style="display: inline;" onsubmit="return confirm('Remove keyword {{ kw }}?');">
+              <input type="hidden" name="action" value="remove_keyword">
+              <input type="hidden" name="keyword" value="{{ kw }}">
+              <button class="delete is-small ml-2" style="pointer-events: auto;"></button>
+            </form>
+          </div>
+          {% else %}
+          <p class="is-size-7 has-text-grey">No keywords configured.</p>
+          {% endfor %}
+        </div>
+
+        <form method="post">
+          <label class="label is-small">Add Keyword</label>
+          <div class="field has-addons">
+            <div class="control is-expanded">
+              <input class="input is-small" type="text" name="keyword" placeholder="e.g. blood tests" required>
+            </div>
+            <div class="control">
+              <button class="button is-small is-primary" name="action" value="add_keyword">
+                <span class="icon is-small"><i class="mdi mdi-plus"></i></span>
+                <span>Add</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mt-5">
+      <header class="card-header">
+        <p class="card-header-title">Refresh Context</p>
+      </header>
+      <div class="card-content">
+        <form method="post" onsubmit="document.getElementById('refresh-all-btn').classList.add('is-loading')">
+          <button id="refresh-all-btn" class="button is-primary is-fullwidth" name="action" value="refresh_all_contexts">
+            Refresh All Profiles
+          </button>
+        </form>
+        <p class="help mt-2 has-text-centered">Re-scrapes websites and updates AI profiles for all companies.</p>
+      </div>
+    </div>
+  </div>
+
+<script>
+  document.getElementById('generate-btn').addEventListener('click', function() {
+    this.classList.add('is-loading');
+  });
+</script>
+
+  <div class="column">
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title">Structured Company Profiles</p>
+      </header>
+      <div class="card-content">
+        {% if context.structured and context.structured.companies %}
+        
+        {% for profile in context.structured.companies %}
+        <div class="block {% if not loop.last %}mb-6 pb-6{% endif %}" {% if not loop.last %}style="border-bottom: 2px dashed #f0f0f0;"{% endif %}>
+            <div class="level mb-3">
+                <div class="level-left">
+                    <div>
+                        <p class="heading has-text-grey mb-0">
+                            {% if loop.first %}Primary{% else %}Competitor{% endif %}
+                        </p>
+                        <h2 class="title is-4 has-text-primary">
+                            {{ profile.company_name }}
+                        </h2>
+                    </div>
+                </div>
+                <div class="level-right">
+                    <button class="button is-small is-primary is-light is-rounded mr-2" type="button" onclick="openEditModal({{ loop.index0 }})">
+                        <span class="icon"><i class="mdi mdi-pencil"></i></span>
+                        <span>Edit</span>
+                    </button>
+                    {% if profile.url %}
+                    <a href="{{ profile.url }}" target="_blank" class="button is-small is-light is-rounded">
+                        <span class="icon"><i class="mdi mdi-web"></i></span>
+                        <span>Website</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if profile.offer_summary %}
+            <div class="notification is-info is-light mb-5 py-3">
+              <p class="is-size-6">{{ profile.offer_summary }}</p>
+            </div>
+            {% endif %}
+
+            <div class="columns is-multiline">
+              <!-- Business Goals -->
+              <div class="column is-12">
+                <h3 class="title is-6 has-text-grey mb-3">
+                  <span class="icon-text">
+                    <span class="icon has-text-success"><i class="mdi mdi-target"></i></span>
+                    <span>Business Goals</span>
+                  </span>
+                </h3>
+                <div class="content">
+                  <ul style="list-style: none; margin-left: 0;">
+                    {% for goal in profile.business_goals %}
+                    <li class="mb-2">
+                      <span class="icon has-text-success is-small mr-2"><i class="mdi mdi-check-circle-outline"></i></span>
+                      {{ goal }}
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Products & Services -->
+              <div class="column is-12">
+                <h3 class="title is-6 has-text-grey mb-3">
+                  <span class="icon-text">
+                    <span class="icon has-text-info"><i class="mdi mdi-package-variant"></i></span>
+                    <span>Key Offerings</span>
+                  </span>
+                </h3>
+                <div class="tags are-medium">
+                  {% for product in profile.key_products %}
+                  <span class="tag is-white border" style="border: 1px solid #dbdbdb;">
+                    <span class="icon is-small mr-1 has-text-info"><i class="mdi mdi-circle-small"></i></span>
+                    {{ product }}
+                  </span>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+
+            <div class="block mt-4">
+              <h3 class="title is-6 has-text-grey mb-2">Market Position</h3>
+              <article class="message is-small is-warning is-light">
+                <div class="message-body is-italic has-text-dark">
+                  {{ profile.market_position }}
+                </div>
+              </article>
+            </div>
+            
+            <div class="block">
+                 <p class="is-size-7 has-text-grey">
+                    <span class="has-text-weight-bold">Context Keywords:</span> 
+                    {{ profile.focus_keywords|join(', ') }}
+                 </p>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% else %}
+        <div class="content has-text-centered py-6">
+            <span class="icon is-large has-text-grey-light mb-3">
+                <i class="mdi mdi-domain mdi-48px"></i>
+            </span>
+            <p class="is-size-5 has-text-grey">No profiles generated yet.</p>
+            <p class="has-text-grey-light">Click "Refresh All Profiles" to analyze monitored companies.</p>
+            {% if context.prompt %}
+            <hr>
+            <p class="is-size-7 has-text-left">Legacy Context Data:</p>
+            <pre class="has-text-left is-size-7">{{ context.prompt }}</pre>
+            {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mt-5">
+      <header class="card-header">
+        <p class="card-header-title">Raw Config (YAML)</p>
+      </header>
+      <div class="card-content">
+        <pre class="config-json">{{ config_json }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div id="profile-modal" class="modal">
+  <div class="modal-background" onclick="closeEditModal()"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Edit Company Profile</p>
+      <button class="delete" aria-label="close" onclick="closeEditModal()"></button>
+    </header>
+    <section class="modal-card-body">
+      <form id="profile-edit-form" method="post">
+        <input type="hidden" name="action" value="save_profile_manual">
+        <input type="hidden" name="index" id="modal-profile-index">
+        
+        <div class="field">
+          <label class="label">Offer Summary</label>
+          <div class="control">
+            <textarea class="textarea" name="offer_summary" id="modal-offer-summary" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Business Goals (one per line)</label>
+          <div class="control">
+            <textarea class="textarea" name="business_goals" id="modal-business-goals" rows="4"></textarea>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Key Offerings (one per line)</label>
+          <div class="control">
+            <textarea class="textarea" name="key_products" id="modal-key-products" rows="4"></textarea>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Market Position</label>
+          <div class="control">
+            <textarea class="textarea" name="market_position" id="modal-market-position" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Context Keywords (comma-separated)</label>
+          <div class="control">
+            <textarea class="textarea" name="focus_keywords" id="modal-focus-keywords" rows="2"></textarea>
+          </div>
+        </div>
+      </form>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="document.getElementById('profile-edit-form').submit()">Save Changes</button>
+      <button class="button" onclick="closeEditModal()">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+  // Inject profiles data safely
+  const companyProfiles = {{ context.structured.companies|default([])|tojson }};
+
+  function openEditModal(index) {
+    const profile = companyProfiles[index];
+    if (!profile) return;
+
+    document.getElementById('modal-profile-index').value = index;
+    document.getElementById('modal-offer-summary').value = profile.offer_summary || '';
+    
+    // Join lists with newlines for editing
+    document.getElementById('modal-business-goals').value = (profile.business_goals || []).join('\n');
+    document.getElementById('modal-key-products').value = (profile.key_products || []).join('\n');
+    
+    document.getElementById('modal-market-position').value = profile.market_position || '';
+    
+    // Join keywords with comma
+    document.getElementById('modal-focus-keywords').value = (profile.focus_keywords || []).join(', ');
+
+    document.getElementById('profile-modal').classList.add('is-active');
+  }
+
+  function closeEditModal() {
+    document.getElementById('profile-modal').classList.remove('is-active');
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% set page_title = "Content Discovery" %}
+{% set page_subtitle = "Review unfiltered articles from feeds to identify new keywords" %}
+
+{% block content %}
+<div class="columns">
+  <div class="column is-one-quarter">
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title">Keyword Management</p>
+      </header>
+      <div class="card-content">
+        <p class="mb-3 is-size-7">Current filtering keywords:</p>
+        <div class="tags mb-4">
+          {% for kw in current_keywords %}
+          <span class="tag is-info is-light">{{ kw }}</span>
+          {% endfor %}
+        </div>
+        
+        <form method="post">
+          <div class="field">
+            <label class="label is-small">Add New Keyword</label>
+            <div class="control">
+              <input class="input is-small" type="text" name="new_keyword" placeholder="e.g. innovation" required>
+            </div>
+          </div>
+          <div class="control">
+            <button class="button is-primary is-small is-fullwidth">Add Keyword</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="column">
+    <div class="box">
+      <h2 class="title is-5">Recent Feed Activity</h2>
+      <p class="subtitle is-6">Showing a sample of recent articles from all configured feeds.</p>
+      
+      {% if articles %}
+      <div class="table-container">
+        <table class="table is-fullwidth is-hoverable">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Article</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for article in articles %}
+            <tr class="{% if article.is_match %}has-background-success-light{% endif %}">
+              <td class="is-vcentered">
+                {% if article.is_match %}
+                <span class="tag is-success">Match</span>
+                {% else %}
+                <span class="tag is-light">Skipped</span>
+                {% endif %}
+              </td>
+              <td>
+                <p class="has-text-weight-bold">
+                  <a href="{{ article.url }}" target="_blank">{{ article.title }}</a>
+                </p>
+                <p class="is-size-7 mb-1">{{ article.summary|truncate(150) }}</p>
+                {% if article.matches %}
+                <div class="tags">
+                  {% for match in article.matches %}
+                  <span class="tag is-white is-small border">{{ match }}</span>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </td>
+              <td class="is-vcentered is-size-7">
+                {{ article.source }}<br>
+                <span class="has-text-grey">{{ article.published }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="notification is-warning">
+        No articles found. Check your Source configurations.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

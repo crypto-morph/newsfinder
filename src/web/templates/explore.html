@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% set page_title = "RAG Explorer" %}
+{% set page_subtitle = "Ask questions and retrieve semantically similar articles" %}
+
+{% block content %}
+<div class="card">
+  <div class="card-content">
+    <form method="get" action="{{ url_for('explore') }}">
+      <div class="field has-addons">
+        <div class="control is-expanded">
+          <input
+            class="input"
+            type="text"
+            name="q"
+            placeholder="What health trends could impact Bluecrest?"
+            value="{{ query }}"
+          />
+        </div>
+        <div class="control">
+          <button class="button is-primary">Search</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="mt-5">
+  {% if results %}
+  <div class="columns is-multiline">
+    {% for item in results %}
+    <div class="column is-half">
+      <div class="card">
+        <div class="card-content">
+          <p class="title is-6">{{ item.metadata.title or 'Untitled' }}</p>
+          <p class="subtitle is-7">{{ item.metadata.source }} · {{ item.metadata.published_date }}</p>
+          <p class="mb-3">{{ item.summary }}</p>
+          <div class="tags">
+            <span class="tag is-link is-light">Relevance {{ item.metadata.relevance_score }}</span>
+            <span class="tag is-warning is-light">Impact {{ item.metadata.impact_score }}</span>
+            {% if item.score is not none %}
+            <span class="tag is-dark is-light">Distance {{ '%.4f'|format(item.score) }}</span>
+            {% endif %}
+          </div>
+          <a class="button is-small is-link is-light" href="{{ item.metadata.url }}" target="_blank">Read article</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="notification is-light">
+    {% if query %}
+    No matching articles found yet. Try a different query after running the pipeline.
+    {% else %}
+    Enter a query to explore the knowledge base.
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

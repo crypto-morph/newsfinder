@@ -1,0 +1,8 @@
+chromadb
+ollama
+flask
+beautifulsoup4
+requests
+apscheduler
+pyyaml
+feedparser

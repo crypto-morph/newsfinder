@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ -f "${ROOT_DIR}/venv/bin/activate" ]]; then
+  # shellcheck disable=SC1091
+  source "${ROOT_DIR}/venv/bin/activate"
+else
+  echo "venv not found at ${ROOT_DIR}/venv; create it first."
+  exit 1
+fi
+
+command="${1:-}";
+if [[ -z "${command}" ]]; then
+  echo "Usage: ./newsctl {start|stop|restart|status|reset}"
+  exit 1
+fi
+
+case "${command}" in
+  start|stop|restart|status)
+    python "${ROOT_DIR}/scripts/ui_service.py" "${command}"
+    ;;
+  reset)
+    python "${ROOT_DIR}/scripts/ui_service.py" stop
+    python "${ROOT_DIR}/scripts/ui_service.py" start
+    ;;
+  *)
+    echo "Unknown command: ${command}"
+    echo "Usage: ./newsctl {start|stop|restart|status|reset}"
+    exit 1
+    ;;
+ esac

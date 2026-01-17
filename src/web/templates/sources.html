@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% set page_title = "Sources" %}
+{% set page_subtitle = "Manage RSS feeds and preview incoming articles" %}
+
+{% block content %}
+<div class="columns">
+  <div class="column is-one-third">
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title">Feed List</p>
+      </header>
+      <div class="card-content">
+        {% if feeds %}
+        <div class="tabs is-boxed is-fullwidth">
+          <ul>
+            {% for feed in feeds %}
+            <li class="{% if loop.index0 == selected_index %}is-active{% endif %}">
+              <a href="{{ url_for('sources', index=loop.index0) }}">
+                {{ feed.name or ('Source ' ~ loop.index) }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% else %}
+        <p>No sources added yet.</p>
+        {% endif %}
+
+        <form method="post" class="mt-4" id="source-form">
+          <input type="hidden" name="index" value="{{ selected_index }}" />
+          <div class="field">
+            <label class="label">Source Name</label>
+            <div class="control">
+              <input class="input" name="feed_name" value="{{ selected_feed.name }}" />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Source URL</label>
+            <div class="control">
+              <input class="input" name="feed_url" value="{{ selected_feed.url }}" />
+            </div>
+          </div>
+          <div class="buttons">
+            <button class="button is-link" name="action" value="save_source">Save</button>
+            <button class="button is-light" name="action" value="preview_source" id="preview-button">
+              Preview
+            </button>
+            <button class="button is-danger is-light" name="action" value="remove_source">Remove</button>
+          </div>
+        </form>
+
+        <hr />
+
+        <form method="post">
+          <input type="hidden" name="index" value="{{ selected_index }}" />
+          <div class="field">
+            <label class="label">Add New Source</label>
+            <div class="control">
+              <input class="input" name="new_name" placeholder="BBC World" />
+            </div>
+          </div>
+          <div class="field">
+            <div class="control">
+              <input class="input" name="new_feed" placeholder="https://example.com/rss.xml" />
+            </div>
+          </div>
+          <button class="button is-primary is-fullwidth" name="action" value="add_source">Add Source</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="column">
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title">Preview Results</p>
+      </header>
+      <div class="card-content">
+        {% if preview %}
+        <table class="table is-fullwidth">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Source</th>
+              <th>Published</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for article in preview %}
+            <tr>
+              <td>
+                <a href="{{ article.link }}" target="_blank">{{ article.title }}</a>
+                <p class="is-size-7">{{ article.summary }}</p>
+              </td>
+              <td>{{ article.source }}</td>
+              <td>{{ article.published }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p>No preview yet. Select a source and click Preview.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  const form = document.getElementById("source-form");
+  const previewButton = document.getElementById("preview-button");
+
+  form?.addEventListener("submit", (event) => {
+    const submitter = event.submitter;
+    if (submitter && submitter.value === "preview_source") {
+      previewButton?.classList.add("is-loading");
+      setTimeout(() => {
+        previewButton?.setAttribute("disabled", "disabled");
+      }, 0);
+    }
+  });
+</script>
+{% endblock %}
