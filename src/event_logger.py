@@ -1,7 +1,7 @@
 import json
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
 class EventLogger:
@@ -15,7 +15,7 @@ class EventLogger:
         """
         event = {
             "timestamp": time.time(),
-            "iso_time": datetime.utcnow().isoformat(),
+            "iso_time": datetime.now(timezone.utc).isoformat(),
             "type": event_type,
             "level": level,
             "message": message,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List
 
 from src.analysis.llm_client import OllamaClient
@@ -236,7 +236,7 @@ class IngestionPipeline:
 
     def _log_alert(self, metadata: Dict) -> None:
         alerts_log = self.config["storage"]["alerts_log"]
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
         line = json.dumps({"timestamp": timestamp, **metadata}, ensure_ascii=False)
         with open(alerts_log, "a", encoding="utf-8") as handle:
             handle.write(line + "\n")
@@ -250,7 +250,7 @@ class IngestionPipeline:
     def update_status(self, articles_processed: int) -> None:
         status_file = self.config["storage"]["status_file"]
         status = {
-            "last_run": datetime.utcnow().isoformat(),
+            "last_run": datetime.now(timezone.utc).isoformat(),
             "articles_processed": articles_processed,
         }
         with open(status_file, "w", encoding="utf-8") as handle:

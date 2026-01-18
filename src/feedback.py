@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Set
 
 
@@ -17,7 +17,7 @@ def _ensure_parent(path: str) -> None:
 def append_feedback(path: str, payload: Dict[str, str]) -> None:
     _ensure_parent(path)
     record = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         **payload,
     }
     with open(path, "a", encoding="utf-8") as handle:

@@ -10,4 +10,7 @@ pandas
 pyarrow
 datasets
 lxml
+pytest
+pytest-mock
+pytest-cov
 

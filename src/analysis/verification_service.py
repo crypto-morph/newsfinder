@@ -2,7 +2,7 @@ import json
 import logging
 import random
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional, List
 from src.analysis.openrouter_client import OpenRouterClient
 from src.event_logger import EventLogger
@@ -62,7 +62,7 @@ class VerificationService:
         flagged = discrepancy >= 4
         
         verification_record = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "article_title": article.get("title"),
             "article_url": article.get("link"),
             "local_model": "local", # Could pull actual name from config if passed

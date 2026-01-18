@@ -11,8 +11,8 @@ A competitive intelligence dashboard that aggregates, filters, and analyzes news
     - Scrapes full article content from RSS feeds.
     - **LLM Analysis**: Summarizes articles and scores them for "Relevance" and "Impact".
     - **Keyword Filtering**: Pre-filters noise based on broad keywords.
+- **Archive Import**: Backfill historical data from BBC Archive sitemaps by selecting a specific month.
 - **Context Profiling**: Automatically scrapes company websites to generate "Strategic Context" (Goals, Products, Market Position) for the AI.
-- **Discovery Mode**: View unfiltered news to spot missing keywords.
 - **RAG Explorer**: Semantic search across your news database.
 - **Modern UI**: Clean Flask + Bulma dashboard with real-time pipeline progress.
 
@@ -20,7 +20,7 @@ A competitive intelligence dashboard that aggregates, filters, and analyzes news
 
 - **Python 3.10+**
 - **Ollama** installed and running locally.
-    - Models required: `llama3.1:8b` (inference) and `all-minilm` (embedding).
+    - Models required: `llama3.1:8b` (inference) and `nomic-embed-text` or `all-minilm` (embedding).
 
 ## Quick Start
 
@@ -36,7 +36,7 @@ A competitive intelligence dashboard that aggregates, filters, and analyzes news
 2.  **Pull AI Models**:
     ```bash
     ollama pull llama3.1:8b
-    ollama pull all-minilm
+    ollama pull nomic-embed-text
     ```
 
 3.  **Run the System**:
@@ -53,9 +53,8 @@ A competitive intelligence dashboard that aggregates, filters, and analyzes news
     - Click **"Generate with AI"** to create a starting list of filtering keywords.
 
 5.  **Ingest News**:
-    - Go to **Dashboard**.
-    - Click **"Run Pipeline"**.
-    - Watch as articles are fetched, analyzed, and scored in real-time.
+    - **Real-time**: Go to **Dashboard** and click **"Run Pipeline"**.
+    - **Historical**: Go to **Import** (`/import`), select a month, and click **"Start Backfill"**.
 
 ## Configuration (`config.yaml`)
 
@@ -80,25 +79,41 @@ pipeline:
 
 llm:
   model: llama3.1:8b
-  embedding_model: all-minilm
+  embedding_model: nomic-embed-text
 ```
 
 ## Directory Structure
 
-- `src/aggregator`: RSS fetching and HTML scraping logic.
-- `src/analysis`: LLM client and prompt engineering.
-- `src/context_profiler`: Logic for scraping company sites and generating strategy profiles.
-- `src/database`: ChromaDB wrapper.
-- `src/web`: Flask application and Jinja2 templates.
-- `logs/`: Application logs and feedback data.
-- `chroma_db/`: Vector database storage (git-ignored).
+```
+/newsfinder
+  /venv/            # IGNORED
+  /src/
+    /aggregator/    # RSS scraper & Sitemap backfiller
+    /analysis/      # LLM client & Verification logic
+    /database/      # ChromaDB wrapper
+    /services/      # Shared business logic (tagging, scraping)
+    /web/           # Flask Application
+      /routes/      # Modular Blueprints (dashboard, articles, api...)
+      /templates/   # Jinja2 HTML templates
+    main.py         # Entry point / Scheduler
+  /data/
+    /archive/       # Parquet monthly archives
+  config.yaml       # Configuration
+  requirements.txt
+```
+
+## CLI Tools
+
+- `./newsctl start|stop|restart`: Manage the web server process.
+- `scripts/backfill_sitemaps.py`: Standalone script for command-line backfilling (alternative to UI).
+- `scripts/warm_sitemap_cache.py`: Pre-builds the sitemap index cache for faster imports.
 
 ## Development
 
 To run in debug mode:
 ```bash
 source venv/bin/activate
-python src/web/app.py
+python src/main.py
 ```
 
 ## License
