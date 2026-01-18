@@ -36,7 +36,7 @@
         <div class="has-text-centered">
           <p class="heading">Primary Profile</p>
           <p class="title is-4">
-            <a href="{{ url_for('config_view') }}" class="has-text-primary">
+            <a href="{{ url_for('config.config_view') }}" class="has-text-primary">
               <span class="icon is-medium"><i class="mdi mdi-domain"></i></span>
               {{ primary.company_name }}
             </a>
@@ -47,7 +47,7 @@
         </div>
         {% else %}
         <p class="has-text-centered">
-          <a href="{{ url_for('config_view') }}">Configure Company Profile</a>
+          <a href="{{ url_for('config.config_view') }}">Configure Company Profile</a>
         </p>
         {% endif %}
       </div>
@@ -97,7 +97,7 @@
           {% if goal_filter %}
           for goal: <strong>{{ goal_filter }}</strong>
           {% endif %}
-          · <a href="{{ url_for('dashboard') }}">Clear filters</a>
+          · <a href="{{ url_for('dashboard.dashboard') }}">Clear filters</a>
         </div>
         {% endif %}
         {% if articles %}
@@ -141,12 +141,12 @@
                 </span>
                 <div class="mt-2 field is-grouped">
                   <p class="control">
-                    <a class="button is-small is-link is-light" href="{{ url_for('edit_tags', article_id=article.id) }}">
+                    <a class="button is-small is-link is-light" href="{{ url_for('articles.edit_tags', article_id=article.id) }}">
                       Edit Tags
                     </a>
                   </p>
                   <p class="control">
-                    <form method="post" action="{{ url_for('delete_article_route', article_id=article.id) }}" onsubmit="return confirm('Delete this article?');">
+                    <form method="post" action="{{ url_for('articles.delete_article_route', article_id=article.id) }}" onsubmit="return confirm('Delete this article?');">
                       <button class="button is-small is-danger is-light" title="Delete Article">
                         <span class="icon is-small">
                           <i class="mdi mdi-delete"></i>

@@ -36,15 +36,15 @@ class NewsDatabase:
                 clean_metadata[k] = v
                 
         try:
-            self.collection.add(
+            self.collection.upsert(
                 ids=[article_id],
                 documents=[text],
                 embeddings=[embedding],
                 metadatas=[clean_metadata]
             )
-            logger.info(f"Added article {article_id} to database.")
+            logger.info(f"Upserted article {article_id} to database.")
         except Exception as e:
-            logger.error(f"Error adding article {article_id}: {e}")
+            logger.error(f"Error upserting article {article_id}: {e}")
 
     def query_articles(self, query_embedding: List[float], n_results: int = 5) -> Dict:
         """

@@ -9,3 +9,5 @@ feedparser
 pandas
 pyarrow
 datasets
+lxml
+

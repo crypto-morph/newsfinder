@@ -22,6 +22,82 @@
         </div>
     </div>
 
+    <!-- Optimization Section -->
+    <div class="card mb-6">
+        <header class="card-header has-background-info-light">
+            <p class="card-header-title">
+                <span class="icon mr-2"><i class="mdi mdi-auto-fix"></i></span>
+                Prompt Optimization
+            </p>
+            <button class="card-header-icon" aria-label="more options" onclick="document.getElementById('opt-content').classList.toggle('is-hidden')">
+                <span class="icon">
+                    <i class="mdi mdi-chevron-down"></i>
+                </span>
+            </button>
+        </header>
+        <div class="card-content is-hidden" id="opt-content">
+            <div class="columns">
+                <!-- Current Prompt -->
+                <div class="column is-6">
+                    <h3 class="title is-6">Current Prompt</h3>
+                    <div class="control">
+                        <textarea class="textarea is-family-monospace is-small" rows="15" readonly>{{ current_prompt }}</textarea>
+                    </div>
+                    <div class="mt-3">
+                        <button class="button is-info is-outlined is-fullwidth" id="btn-optimize" onclick="optimizePrompt()">
+                            <span class="icon"><i class="mdi mdi-magic-staff"></i></span>
+                            <span>Generate Improved Prompt (from Failures)</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- New Prompt -->
+                <div class="column is-6">
+                    <h3 class="title is-6">Proposed Prompt</h3>
+                    <div class="control">
+                        <textarea class="textarea is-family-monospace is-small" rows="15" id="new-prompt" placeholder="Generated prompt will appear here..."></textarea>
+                    </div>
+                    <div class="field is-grouped mt-3">
+                        <p class="control is-expanded">
+                            <button class="button is-primary is-outlined is-fullwidth" id="btn-test" onclick="testPrompt()" disabled>
+                                <span class="icon"><i class="mdi mdi-test-tube"></i></span>
+                                <span>Test on Failures</span>
+                            </button>
+                        </p>
+                        <p class="control is-expanded">
+                            <button class="button is-success is-fullwidth" id="btn-apply" onclick="applyPrompt()" disabled>
+                                <span class="icon"><i class="mdi mdi-check"></i></span>
+                                <span>Apply Changes</span>
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Test Results -->
+            <div class="box is-hidden" id="test-results-box">
+                <h4 class="title is-6">Test Results</h4>
+                <div class="table-container">
+                    <table class="table is-fullwidth is-narrow is-size-7">
+                        <thead>
+                            <tr>
+                                <th>Article</th>
+                                <th class="has-text-centered">Old Score</th>
+                                <th class="has-text-centered">Target</th>
+                                <th class="has-text-centered">New Score</th>
+                                <th class="has-text-centered">Result</th>
+                                <th>New Reasoning</th>
+                            </tr>
+                        </thead>
+                        <tbody id="test-results-body">
+                            <!-- JS will populate -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% if not verifications %}
     <div class="notification is-info is-light">
         <button class="delete"></button>
@@ -106,4 +182,119 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+async function optimizePrompt() {
+    const btn = document.getElementById('btn-optimize');
+    const newPromptArea = document.getElementById('new-prompt');
+    const testBtn = document.getElementById('btn-test');
+    
+    btn.classList.add('is-loading');
+    btn.disabled = true;
+    newPromptArea.value = "Generating optimized prompt based on recent failures... (this may take 30s)";
+    
+    try {
+        const resp = await fetch("{{ url_for('verification.optimize_prompt') }}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        const data = await resp.json();
+        
+        if (data.status === 'success') {
+            newPromptArea.value = data.new_prompt;
+            testBtn.disabled = false;
+        } else {
+            newPromptArea.value = "Error: " + data.message;
+        }
+    } catch (e) {
+        newPromptArea.value = "Network Error: " + e.message;
+    } finally {
+        btn.classList.remove('is-loading');
+        btn.disabled = false;
+    }
+}
+
+async function testPrompt() {
+    const btn = document.getElementById('btn-test');
+    const applyBtn = document.getElementById('btn-apply');
+    const prompt = document.getElementById('new-prompt').value;
+    const resultsBox = document.getElementById('test-results-box');
+    const tbody = document.getElementById('test-results-body');
+    
+    if (!prompt) return;
+    
+    btn.classList.add('is-loading');
+    btn.disabled = true;
+    resultsBox.classList.add('is-hidden');
+    tbody.innerHTML = "";
+    
+    try {
+        const resp = await fetch("{{ url_for('verification.test_optimized_prompt') }}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({prompt: prompt})
+        });
+        const data = await resp.json();
+        
+        if (data.status === 'success') {
+            data.results.forEach(r => {
+                const tr = document.createElement('tr');
+                const improvedClass = r.improved ? 'has-text-success' : (r.new_score === r.target_score ? 'has-text-success' : 'has-text-grey');
+                const icon = r.improved ? 'mdi-arrow-up-bold' : (r.new_score === r.target_score ? 'mdi-check' : 'mdi-minus');
+                
+                tr.innerHTML = `
+                    <td class="has-text-weight-medium">${r.title}</td>
+                    <td class="has-text-centered has-text-danger">${r.old_score}</td>
+                    <td class="has-text-centered has-text-info">${r.target_score}</td>
+                    <td class="has-text-centered has-text-weight-bold">${r.new_score}</td>
+                    <td class="has-text-centered ${improvedClass}">
+                        <span class="icon"><i class="mdi ${icon}"></i></span>
+                    </td>
+                    <td class="is-size-7">${r.reasoning}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            resultsBox.classList.remove('is-hidden');
+            applyBtn.disabled = false;
+        } else {
+            alert("Error: " + data.message);
+        }
+    } catch (e) {
+        alert("Network Error: " + e.message);
+    } finally {
+        btn.classList.remove('is-loading');
+        btn.disabled = false;
+    }
+}
+
+async function applyPrompt() {
+    const btn = document.getElementById('btn-apply');
+    const prompt = document.getElementById('new-prompt').value;
+    
+    if (!prompt || !confirm("Are you sure you want to overwrite the current prompt configuration?")) return;
+    
+    btn.classList.add('is-loading');
+    btn.disabled = true;
+    
+    try {
+        const resp = await fetch("{{ url_for('verification.apply_prompt') }}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({prompt: prompt})
+        });
+        const data = await resp.json();
+        
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert("Error: " + data.message);
+        }
+    } catch (e) {
+        alert("Network Error: " + e.message);
+    } finally {
+        btn.classList.remove('is-loading');
+        btn.disabled = false;
+    }
+}
+</script>
 {% endblock %}

@@ -156,7 +156,7 @@ You will need to build a script which will convert the company context into a st
 - focus_keywords
 
 ## 6. Roadmap
-1.  **Phase 1 (Core)**: Setup Python, Chroma, Ollama connection. Build basic scraper for BBC.
-2.  **Phase 2 (Intelligence)**: Implement Company Context Profiler and LLM Scoring pipeline.
-3.  **Phase 3 (UI)**: Build Bulma dashboard to view data.
-4.  **Phase 4 (Polish)**: Scheduler, Logging, Refinement.
+1.  **Phase 1 (Core)**: Setup Python, Chroma, Ollama connection. Build basic scraper for BBC. [Completed]
+2.  **Phase 2 (Intelligence)**: Implement Company Context Profiler and LLM Scoring pipeline. [Completed]
+3.  **Phase 3 (UI)**: Build Bulma dashboard to view data. [Completed]
+4.  **Phase 4 (Polish)**: Scheduler, Logging, Refinement. [Completed]

@@ -5,48 +5,18 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass
 from textwrap import dedent
 from typing import Dict, List
-from urllib.parse import urlparse
 
-import requests
 from bs4 import BeautifulSoup
 
 from src.analysis.llm_client import OllamaClient
 from src.settings import load_config
+from src.utils import derive_company_name, default_company_structure
+from src.models import CompanyContext
+from src.services.scraper import fetch_company_content
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class CompanyContext:
-    url: str
-    company_name: str
-    raw_summary: str
-    offer_summary: str
-    business_goals: List[str]
-    key_products: List[str]
-    market_position: str
-    focus_keywords: List[str]
-
-    def as_prompt(self) -> str:
-        lines = [f"Company: {self.company_name}", f"Company URL: {self.url}"]
-        if self.offer_summary:
-            lines.append(f"Offering Summary: {self.offer_summary}")
-        if self.business_goals:
-            lines.append("Business Goals:")
-            lines.extend([f"- {goal}" for goal in self.business_goals])
-        if self.key_products:
-            lines.append("Key Products/Services:")
-            lines.extend([f"- {product}" for product in self.key_products])
-        if self.market_position:
-            lines.append(f"Market Position: {self.market_position}")
-        if self.focus_keywords:
-            lines.append(
-                "Focus Keywords: " + ", ".join(sorted(set(self.focus_keywords)))
-            )
-        return "\n".join(lines)
 
 
 class CompanyContextProfiler:
@@ -84,19 +54,10 @@ class CompanyContextProfiler:
         url = target["url"]
         logger.info("Refreshing company context from %s", url)
         
-        try:
-            html = self._fetch_html(url)
-            soup = BeautifulSoup(html, "html.parser")
-            
-            sections = {
-                "mission": self._extract_section(soup, ["mission", "goal", "vision"]),
-                "products": self._extract_section(soup, ["product", "service", "solution"]),
-                "market": self._extract_section(soup, ["market", "about", "story"]),
-            }
-            raw_summary = "\n\n".join(filter(None, sections.values()))
-        except Exception as e:
-            logger.warning(f"Could not fetch/parse {url}: {e}")
-            raw_summary = ""
+        # Use robust scraper that includes About page
+        raw_summary = fetch_company_content(url)
+        if not raw_summary:
+            logger.warning(f"Could not fetch content from {url}")
 
         # Use configured name or derive it
         company_name = target.get("name") or derive_company_name(url)
@@ -280,7 +241,7 @@ class CompanyContextProfiler:
             - key_products: list[str] describing the main services or packages
             - market_position: string summarizing niche, differentiation, and target market
             - focus_keywords: list[str] of 5-8 lower-case keywords/phrases to match against articles
-
+            
             Text:
             {truncated_text}
             """
@@ -304,69 +265,5 @@ class CompanyContextProfiler:
         }
 
     def _fallback_structure(self, company_name: str) -> Dict[str, List[str] | str]:
-        default_goals = [
-            "Expand preventive health screening reach across the UK",
-            "Promote early detection services to employers and consumers",
-            "Differentiate through clinical quality and customer experience",
-        ]
-        default_products = [
-            "Comprehensive health screening packages",
-            "On-site corporate wellness clinics",
-            "Remote diagnostic tests",
-        ]
-        keywords = self.config.get("pipeline", {}).get("keywords", [])
-        focus_keywords = [kw.lower() for kw in keywords] or [
-            "preventive health",
-            "health screening",
-            "diagnostics",
-        ]
-        return {
-            "company_name": company_name,
-            "offer_summary": "Affordable, nationwide health screening and wellness packages for individuals and employers.",
-            "business_goals": default_goals,
-            "key_products": default_products,
-            "market_position": "Preventive health screening provider focused on proactive wellness.",
-            "focus_keywords": focus_keywords,
-        }
-
-    def _persist_context(self, context: CompanyContext) -> None:
-        path = self.config["storage"]["context_cache"]
-        prompt = context.as_prompt()
-        with open(path, "w", encoding="utf-8") as handle:
-            handle.write(prompt)
-
-        json_path = path + ".json"
-        with open(json_path, "w", encoding="utf-8") as handle:
-            json.dump(
-                {
-                    "url": context.url,
-                    "company_name": context.company_name,
-                    "offer_summary": context.offer_summary,
-                    "business_goals": context.business_goals,
-                    "key_products": context.key_products,
-                    "market_position": context.market_position,
-                    "focus_keywords": context.focus_keywords,
-                    "raw_summary": context.raw_summary,
-                },
-                handle,
-                indent=2,
-                ensure_ascii=False,
-            )
-
-        logger.info(
-            "Company context cached at %s (prompt) and %s (structured)",
-            path,
-            json_path,
-        )
-
-
-def derive_company_name(url: str) -> str:
-    if not url:
-        return "Company"
-    parsed = urlparse(url)
-    host = parsed.netloc or parsed.path
-    host = host.replace("www.", "")
-    base = host.split(".")[0].replace("-", " ")
-    if "wellness" in base and " " not in base:
-        base = base.replace("wellness", " wellness")
-    return base.title() or "Company"
+        # Use shared default structure logic
+        return default_company_structure(self.config, company_name)

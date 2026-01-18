@@ -86,6 +86,37 @@ class ArchiveManager:
         
         return None
 
+    def get_recent_articles(self, limit: int = 100) -> List[Dict]:
+        """
+        Get recently archived articles across recent months.
+        Useful for replacing the JSON cache listing.
+        """
+        months = sorted(glob.glob(os.path.join(self.archive_dir, "*")), reverse=True)
+        articles = []
+        
+        for month_path in months:
+            if not os.path.isdir(month_path):
+                continue
+            
+            month_str = os.path.basename(month_path)
+            df = self._load_month(month_str)
+            if df is None or df.empty:
+                continue
+                
+            # Convert timestamp/published to comparable
+            # We'll just take the tail since we append new stuff
+            # But duplicate handling keeps 'last', so tail is recent.
+            
+            # Convert to list of dicts, reverse to get newest first
+            batch = df.tail(limit - len(articles)).to_dict('records')
+            # Reverse to show newest first
+            articles.extend(reversed(batch))
+            
+            if len(articles) >= limit:
+                break
+                
+        return articles[:limit]
+
     def save_articles(self, articles: List[Dict]):
         """
         Save a list of articles to local.parquet in appropriate month folders.

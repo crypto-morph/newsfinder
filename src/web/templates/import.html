@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% set page_title = "Import Archive" %}
+{% set page_subtitle = "Backfill articles from BBC Archives" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-content">
+        <div class="content">
+            <p>Select a month to backfill articles from the BBC UK Archive sitemaps. This process will scan the sitemaps for the selected period, fetch the article URLs, and run them through the ingestion pipeline.</p>
+            
+            <div class="notification is-warning is-light">
+                <button class="delete"></button>
+                <strong>Note:</strong> This process can take a significant amount of time depending on the number of articles found. It is recommended to run this during off-peak hours.
+            </div>
+
+            <form method="post" action="{{ url_for('import_routes.import_view') }}">
+                <input type="hidden" name="action" value="start_backfill">
+                
+                <div class="field is-horizontal">
+                    <div class="field-label is-normal">
+                        <label class="label">Target Month</label>
+                    </div>
+                    <div class="field-body">
+                        <div class="field">
+                            <p class="control is-expanded has-icons-left">
+                                <input class="input" type="month" name="target_month" required>
+                                <span class="icon is-small is-left">
+                                    <i class="mdi mdi-calendar"></i>
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field is-horizontal">
+                    <div class="field-label is-normal">
+                        <label class="label">Limit</label>
+                    </div>
+                    <div class="field-body">
+                        <div class="field">
+                            <p class="control is-expanded">
+                                <input class="input" type="number" name="limit" value="50" min="1" max="500">
+                            </p>
+                            <p class="help">Maximum number of articles to import to avoid overwhelming the system.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field is-horizontal">
+                    <div class="field-label">
+                        <!-- Left empty for spacing -->
+                    </div>
+                    <div class="field-body">
+                        <div class="field">
+                            <div class="control">
+                                <button type="submit" class="button is-primary">
+                                    <span class="icon"><i class="mdi mdi-cloud-download"></i></span>
+                                    <span>Start Backfill</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if active_backfill %}
+<div class="card mt-5">
+    <header class="card-header">
+        <p class="card-header-title">
+            Backfill Status
+        </p>
+    </header>
+    <div class="card-content">
+        <div class="content">
+            <p><strong>Month:</strong> {{ active_backfill.month }}</p>
+            <p><strong>Status:</strong> {{ active_backfill.status }}</p>
+            <progress class="progress is-info" value="{{ active_backfill.progress }}" max="100">{{ active_backfill.progress }}%</progress>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

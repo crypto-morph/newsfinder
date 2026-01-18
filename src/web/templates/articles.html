@@ -59,6 +59,46 @@
                             </div>
                         </article>
                         {% endif %}
+
+                        {% if article.history %}
+                        <div class="mt-3">
+                            <details>
+                                <summary class="is-size-7 has-text-grey" style="cursor: pointer;">
+                                    <strong>History</strong> ({{ article.history|length }} updates)
+                                </summary>
+                                <div class="content is-size-7 mt-2 pl-2" style="border-left: 2px solid #dbdbdb;">
+                                    {% for event in article.history %}
+                                        <div class="mb-2">
+                                            <span class="has-text-grey-light">{{ event.timestamp[:16].replace('T', ' ') }}</span>
+                                            {% if event.changes %}
+                                                {% for field, change in event.changes.items() %}
+                                                    {% if field == 'relevance_score' %}
+                                                        <span class="tag is-white is-small" style="border: 1px solid #dbdbdb;">
+                                                            R: <strong>{{ change['from'] }}</strong> → <strong>{{ change['to'] }}</strong>
+                                                        </span>
+                                                    {% elif field == 'impact_score' %}
+                                                        <span class="tag is-white is-small" style="border: 1px solid #dbdbdb;">
+                                                            I: <strong>{{ change['from'] }}</strong> → <strong>{{ change['to'] }}</strong>
+                                                        </span>
+                                                    {% elif field == 'status' %}
+                                                        <span class="tag is-light is-small">
+                                                            Status: {{ change['from'] }} → {{ change['to'] }}
+                                                        </span>
+                                                    {% elif field == 'relevance_reasoning' %}
+                                                        <div class="mt-1 has-text-grey-dark is-italic" style="border-left: 2px solid #ddd; padding-left: 0.5rem;">
+                                                            "{{ change['to'] }}"
+                                                        </div>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="is-italic has-text-grey">Reappraised (no score changes)</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </details>
+                        </div>
+                        {% endif %}
                     </td>
                     <td>
                         <div class="field is-grouped is-grouped-multiline">
@@ -72,6 +112,31 @@
                                     I: {{ article.impact_score }}
                                 </span>
                             </div>
+                        </div>
+
+                        <!-- Status Actions -->
+                        <div class="buttons has-addons are-small mb-3">
+                            <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}">
+                                <input type="hidden" name="status" value="High">
+                                <button class="button {% if article.status == 'High' %}is-selected is-success{% endif %}" title="Set High" {% if article.status == 'High' %}disabled{% endif %}>H</button>
+                            </form>
+                            <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}">
+                                <input type="hidden" name="status" value="Medium">
+                                <button class="button {% if article.status == 'Medium' %}is-selected is-warning{% endif %}" title="Set Medium" {% if article.status == 'Medium' %}disabled{% endif %}>M</button>
+                            </form>
+                            <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}">
+                                <input type="hidden" name="status" value="Low">
+                                <button class="button {% if article.status == 'Low' %}is-selected is-light{% endif %}" title="Set Low" {% if article.status == 'Low' %}disabled{% endif %}>L</button>
+                            </form>
+                             <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}">
+                                <input type="hidden" name="status" value="Dismissed">
+                                <button class="button {% if article.status == 'Dismissed' %}is-selected is-grey{% endif %}" title="Dismiss" {% if article.status == 'Dismissed' %}disabled{% endif %}><i class="mdi mdi-close"></i></button>
+                            </form>
+                            <form method="post" action="{{ url_for('articles.reappraise_article', article_id=article.id) }}" onsubmit="if(confirm('Re-run analysis with current context? This may take a moment.')) { this.querySelector('button').classList.add('is-loading'); return true; } return false;">
+                                <button class="button is-info is-light ml-2" title="Reappraise / Re-analyze">
+                                    <span class="icon is-small"><i class="mdi mdi-refresh"></i></span>
+                                </button>
+                            </form>
                         </div>
                         
                         {% if article.verification %}
@@ -98,7 +163,7 @@
                         {% endif %}
 
                         <div class="mt-2">
-                             <a class="button is-small is-text" href="{{ url_for('edit_tags', article_id=article.id) }}">
+                             <a class="button is-small is-text" href="{{ url_for('articles.edit_tags', article_id=article.id) }}">
                                 Edit Details
                             </a>
                         </div>

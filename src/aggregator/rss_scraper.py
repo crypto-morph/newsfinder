@@ -170,8 +170,13 @@ class RSSNewsAggregator:
         Scrapes the main text content from a news article URL.
         Includes heuristics for common UK news sites.
         """
+        # Determine if we need to force refresh due to bad title
+        force_refresh = False
+        if metadata and metadata.get("is_slug_title"):
+            force_refresh = True
+
         # 1. Check Parquet Archive (Hugging Face sync or local archive)
-        if self.archive_manager:
+        if not force_refresh and self.archive_manager:
             published_date = metadata.get("published") if metadata else None
             archived_article = self.archive_manager.get_article(url, published_date)
             if archived_article and archived_article.get("content"):
@@ -180,7 +185,7 @@ class RSSNewsAggregator:
 
         # 2. Check JSON cache
         cache_path = self._get_cache_path(url)
-        if cache_path and os.path.exists(cache_path):
+        if not force_refresh and cache_path and os.path.exists(cache_path):
             try:
                 with open(cache_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
@@ -216,6 +221,17 @@ class RSSNewsAggregator:
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Extract Title if provisional (slug title)
+            # Do this BEFORE cleanup, as H1 might be in <header>
+            if metadata and metadata.get("is_slug_title"):
+                h1 = soup.find("h1")
+                if h1:
+                    new_title = h1.get_text().strip()
+                    if new_title:
+                        metadata["title"] = new_title
+                        metadata["is_slug_title"] = False
+                        logger.info(f"Updated title for {url}: {new_title}")
             
             # Remove scripts and styles
             for script in soup(["script", "style", "nav", "footer", "header"]):

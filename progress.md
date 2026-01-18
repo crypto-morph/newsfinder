@@ -23,9 +23,10 @@ The News Finder system is fully implemented. It supports multi-company competiti
 - **Parquet Archiving**: Unified storage for scraped data and Hugging Face datasets (`data/archive/YYYY-MM/`). @src/archive_manager.py
 - **Hugging Face Sync**: Tools to download monthly archives directly from HF. @scripts/sync_hf_archive.py
 - **Prompt Hardening**: Strict scoring rules to prevent hallucinations (Geography, Analogies, Evidence Quotes).
+- **Scheduler & Entry Point**: Unified `main.py` launching Flask and APScheduler for background ingestion. @src/main.py
+- **Model Tuning**: Refined local model prompts based on verification logs to reduce hallucinations on general news (e.g. accidents, legal disputes).
 
 ### 🚧 In Progress / Partial
-- **Scheduler**: Currently manual run via UI. `APScheduler` dependency exists but no `main.py` entrypoint for automated background runs yet (UI-driven workflow preferred by user for now).
 
 ### ❌ Missing / Planned
 - **Slack Integration**: Not requested in current scope.

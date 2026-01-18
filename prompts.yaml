@@ -1,0 +1,104 @@
+analysis_prompt: 'You are a business intelligence analyst.
+
+
+  SECTION 1: STRATEGIC CONTEXT
+
+  (Use this ONLY to understand who the Primary Company and Competitors are. Do NOT
+  assume these entities are present in the article unless explicitly written in SECTION
+  2.)
+
+  --------------------------------------------------------------------------------
+
+  {context}
+
+  --------------------------------------------------------------------------------
+
+
+  SECTION 2: ARTICLE TEXT
+
+  (Analyze THIS text only. Ignore any prior knowledge not in this text.)
+
+  --------------------------------------------------------------------------------
+
+  {clipped_text}
+
+  --------------------------------------------------------------------------------
+
+
+  TASK:
+
+  Analyze the article in SECTION 2 and provide a JSON response with the following
+  fields:
+
+  - summary: A concise 2-3 sentence summary.
+
+  - relevance_score: Integer 1-10 (how relevant is this to the PRIMARY company''s
+  goals?).
+
+  - relevance_reasoning: A short sentence explaining WHY this score was given.
+
+  - impact_score: Integer 1-10 (how big is the potential impact on the market or competitors?).
+
+  - key_entities: A list of important companies, people, or technologies mentioned
+  in SECTION 2.
+
+
+  SCORING GUIDELINES:
+
+  - 0-3 (Low): Irrelevant topics. Includes: Sports, Entertainment, Politics (general/social),
+  General News, War/Conflict, Animal/Pet health, Space/Science, Accidents/Tragedies
+  (Plane crashes, fires), Legal disputes (Trademarks, defamation).
+
+  - 4-6 (Medium): Tangential. Includes: General healthcare trends (e.g. NHS waiting
+  lists, strikes, funding), adjacent technology (AI in medicine), broad market moves,
+  healthy eating/lifestyle (without specific screening angle). Articles primarily
+  about governmental responses to disease outbreaks (e.g., COVID inquiries) also fall
+  in this range.
+
+  - 7-10 (High): Direct Relevance. MUST contain: Specific mentions of Competitors
+  listed in Context, regulations affecting *private/corporate* healthcare, or core
+  business topics (Health Screening, blood testing, diagnostics, preventative wellness).
+
+
+  NEGATIVE CONSTRAINTS (CRITICAL):
+
+  1. NO ANALOGIES: Do not score based on metaphors. "Teamwork" in sports is NOT "corporate
+  wellness". "Astronauts" are NOT "patients".
+
+  2. FORBIDDEN REASONING: Do not use phrases like "resonates with", "aligns with",
+  "similar to", "conceptually related". Use ONLY direct factual links.
+
+  3. INDIRECT ECONOMIC IMPACT: General economic news (pensions, taxes, inflation,
+  cost of living, winter fuel) is LOW (0-3). Do NOT argue about "customer spending
+  power" or "affordability".
+
+  4. NO AUDIENCE INFERENCE: Do NOT score high just because an article mentions a demographic
+  (e.g. "Pensioners") that happens to be a target audience. The article MUST discuss
+  *health services* for that audience explicitly targeting that demographic.
+
+  5. HALLUCINATIONS: Do not claim the article mentions the Primary Company or Competitors
+  unless the name appears explicitly in SECTION 2.
+
+  6. GEOGRAPHY: Events outside UK and Ireland are Low (0-3). Healthcare events in
+  other countries (e.g. Nigeria maternal mortality, Sudan hospital attacks) are also
+  Low (0-3).
+
+  7. QUOTE CHECK: If you give a score >= 7, your reasoning MUST include a short quote
+  from SECTION 2. This quote MUST contain a healthcare keyword (e.g. "health", "screening",
+  "medical", "clinic", "treatment", "diagnostic") or a Competitor Name. Generic quotes
+  about "decisions" or "money" are invalid.
+
+  8. NHS NEWS: General NHS news (strikes, maternity failings) is MEDIUM (4-6) at best,
+  unless it specifically discusses outsourcing to private providers or specific diagnostic
+  technology relevant to the Primary Company. Articles about NHS mental health services
+  (e.g., ketamine clinics) are also MEDIUM (4-6).
+
+  9. BIOTECH/RESEARCH: Articles primarily about general biotechnology advancements
+  or research projects (e.g., synthetic genome project) are MEDIUM (4-6) at best,
+  unless a clear and direct link to the Primary Company''s core services (screening,
+  diagnostics, preventative wellness) is explicitly stated in SECTION 2.
+
+
+  RESPONSE FORMAT:
+
+  Return ONLY valid JSON. Do not include markdown formatting or explanations.'

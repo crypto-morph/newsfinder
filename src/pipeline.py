@@ -13,6 +13,7 @@ from src.analysis.verification_service import VerificationService
 from src.aggregator.rss_scraper import RSSNewsAggregator
 from src.database.chroma_client import NewsDatabase
 from src.settings import load_config
+from src.history import HistoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class IngestionPipeline:
         self.verification_service = VerificationService(self.config)
         chroma_dir = self.config["storage"]["chroma_dir"]
         self.db = NewsDatabase(persist_directory=chroma_dir)
+        self.history_manager = HistoryManager()
 
     def _article_id(self, url: str) -> str:
         return hashlib.sha256(url.encode("utf-8")).hexdigest()
@@ -53,7 +55,7 @@ class IngestionPipeline:
             skip_callback=skip_if_exists
         )
 
-    def process_article(self, article: Dict) -> Dict:
+    def process_article(self, article: Dict, force: bool = False) -> Dict:
         """
         Process a single article: deduplicate, filter, analyze, embed, store.
         Returns a result dict with status and details.
@@ -67,7 +69,7 @@ class IngestionPipeline:
 
         # 1. Deduplication
         article_id = self._article_id(article["link"])
-        if self.db.article_exists(article_id):
+        if not force and self.db.article_exists(article_id):
             result["status"] = "skipped"
             result["reason"] = "Duplicate (already exists in DB)"
             logger.info("Skipping duplicate article %s", article["link"])
@@ -78,7 +80,7 @@ class IngestionPipeline:
             kw.lower() for kw in self.config["pipeline"].get("keywords", [])
         )
         content_lower = article["content"].lower()
-        if keywords and not any(keyword in content_lower for keyword in keywords):
+        if not force and keywords and not any(keyword in content_lower for keyword in keywords):
             result["status"] = "skipped"
             result["reason"] = "Filtered (no matching keywords)"
             logger.debug("Skipping article %s due to keyword filter", article.get("title"))
@@ -115,6 +117,10 @@ class IngestionPipeline:
             "summary_text": analysis.get("summary", ""),
             "key_entities": analysis.get("key_entities", []),
             "topic_tags": topic_tags,
+            # Reappraisal tracking
+            "previous_relevance_score": article.get("previous_relevance_score"),
+            "previous_impact_score": article.get("previous_impact_score"),
+            "reappraised_count": article.get("reappraised_count", 0),
         }
 
         # 7. Storage
@@ -139,6 +145,66 @@ class IngestionPipeline:
 
         result["status"] = "imported"
         result["metadata"] = metadata
+        return result
+
+    def reprocess_article(self, article_id: str) -> Dict:
+        """
+        Re-run analysis for a specific article by ID.
+        """
+        # 1. Get existing metadata to find URL
+        existing = self.db.get_article(article_id)
+        if not existing:
+            return {"status": "error", "message": "Article not found"}
+            
+        url = existing.get("url")
+        if not url:
+            return {"status": "error", "message": "Article has no URL"}
+
+        # 2. Re-fetch content
+        # We need to construct a minimal metadata dict for the scraper if needed
+        meta = {
+            "title": existing.get("title", ""),
+            "published": existing.get("published", ""),
+            "source": existing.get("source", ""),
+        }
+        
+        # This will check Archive/Parquet first, then scrape
+        content = self.aggregator._scrape_article_content(url, metadata=meta)
+        
+        # Fallback: If scraping fails/cache missing, use stored summary
+        is_fallback = False
+        if not content:
+            logger.warning(f"Could not retrieve original content for {article_id}. Falling back to stored summary.")
+            content = existing.get("summary_text", "")
+            is_fallback = True
+            
+        if not content:
+             return {"status": "error", "message": "Could not retrieve content or summary"}
+
+        # 3. Construct article dict for pipeline
+        article_data = {
+            "title": existing.get("title", ""),
+            "link": url,
+            "published": existing.get("published", ""),
+            "content": content,
+            "source": existing.get("source", ""),
+            # Carry over previous scores for comparison
+            "previous_relevance_score": existing.get("relevance_score"),
+            "previous_impact_score": existing.get("impact_score"),
+            "reappraised_count": existing.get("reappraised_count", 0) + 1,
+            "is_content_fallback": is_fallback
+        }
+
+        # 4. Force process
+        logger.info(f"Reprocessing article {article_id} ({url})")
+        result = self.process_article(article_data, force=True)
+        
+        if result.get("status") == "imported":
+            new_metadata = result.get("metadata", {})
+            # Log history
+            changes = self.history_manager.log_change(article_id, existing, new_metadata)
+            result["history_diff"] = changes
+            
         return result
 
     def run(self) -> List[Dict]:
