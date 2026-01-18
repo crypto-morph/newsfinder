@@ -44,10 +44,11 @@ An agentic system for gathering recent news articles on a particular topic, summ
 - **Filter**: 
     - **Keyword Filtering**: Articles must match at least one configured keyword.
     - **Discovery Mode**: A separate view to see unfiltered articles and discover new keywords.
+    - **Archiving**: Automatically saves fetched articles to monthly compressed Parquet files (`data/archive/YYYY-MM/`).
 
 ### 3.3. Intelligent Ingestion Pipeline
 *Functionality*: Processes raw HTML/Text into structured data via Granular APIs.
-1.  **Fetch**: Retrieve raw articles from feeds.
+1.  **Fetch**: Retrieve raw articles from feeds or Parquet Archive.
 2.  **Process (Per Article)**:
     - **Deduplicate**: Check hash of URL against DB.
     - **Filter**: Apply keyword allowlist.
@@ -56,6 +57,7 @@ An agentic system for gathering recent news articles on a particular topic, summ
         - Score "Relevance" (1-10) to the *Primary* company.
         - Score "Impact" (1-10) on the broader market/competitors.
         - Extract "Key Entities" and "Topic Tags".
+    - **Verify (Optional)**: Cross-check high-value articles with a secondary LLM (e.g., via OpenRouter) to flag hallucinations.
     - **Embed**: Generate vector embeddings for the summary.
     - **Store**: Save to ChromaDB.
     - **Alert**: Log high-scoring articles.
@@ -68,12 +70,19 @@ An agentic system for gathering recent news articles on a particular topic, summ
     - `summary_text`
     - `topic_tags`, `key_entities`, `goal_matches`
 
-### 3.5. Alert System
+### 3.5. Verification Service
+*Functionality*: auditing and quality control.
+- **Trigger**: Random sample (10%) or High Interest articles (100%).
+- **Process**: Sends article + local analysis to an external superior model (e.g., Gemini Pro via OpenRouter).
+- **Output**: Agrees/Disagrees with local score. Flags hallucinations.
+- **UI**: Dedicated "Verification" tab to review audit logs.
+
+### 3.6. Alert System
 *Functionality*: Proactive notification.
 - **Trigger**: New article ingested with `relevance_score > 7` AND `impact_score > 7`.
 - **Channel**: Appended to a local `alerts.log` file and displayed on Dashboard.
 
-### 3.6. User Interface (Web Dashboard)
+### 3.7. User Interface (Web Dashboard)
 *Style*: Modern, Clean, Bulma CSS.
 - **Dashboard View**:
     - System Status & Recent Alerts.
@@ -84,6 +93,8 @@ An agentic system for gathering recent news articles on a particular topic, summ
 - **Discovery View**:
     - View unfiltered feed items to spot missed news.
     - "Add Keyword" shortcuts for rapid tuning.
+- **Verification View**:
+    - Audit log comparing Local vs Remote LLM scores.
 - **RAG Explorer**:
     - Semantic search across the article database.
 - **Sources View**:
@@ -102,11 +113,13 @@ An agentic system for gathering recent news articles on a particular topic, summ
 /newsfinder
   /venv/            # IGNORED in git
   /src/
-    /aggregator/    # Scrapers
-    /analysis/      # LLM & Embedding logic
+    /aggregator/    # Scrapers & Archive Manager
+    /analysis/      # LLM, Embedding, & Verification logic
     /database/      # ChromaDB wrappers
     /web/           # Flask/FastAPI app & Templates
     main.py         # Entry point / Scheduler
+  /data/
+    /archive/       # Parquet monthly archives
   config.yaml       # Configuration (URLs, Keys)
   requirements.txt
   .gitignore
@@ -120,6 +133,9 @@ An agentic system for gathering recent news articles on a particular topic, summ
     - `*.env`
     - `chroma_db/` (The local database files)
     - `logs/`
+    - `document-cache/` (Legacy JSON cache)
+    - `data/archive/` (Parquet files - too large for git)
+
 
 ## 5. Context
 

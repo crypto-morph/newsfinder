@@ -65,19 +65,39 @@ class OllamaClient:
         prompt = f"""
         You are a business intelligence analyst.
 
-        STRATEGIC CONTEXT (Primary Company & Competitors):
+        SECTION 1: STRATEGIC CONTEXT
+        (Use this ONLY to understand who the Primary Company and Competitors are. Do NOT assume these entities are present in the article unless explicitly written in SECTION 2.)
+        --------------------------------------------------------------------------------
         {context}
+        --------------------------------------------------------------------------------
 
-        ARTICLE TEXT:
+        SECTION 2: ARTICLE TEXT
+        (Analyze THIS text only. Ignore any prior knowledge not in this text.)
+        --------------------------------------------------------------------------------
         {clipped_text}
+        --------------------------------------------------------------------------------
 
         TASK:
-        Analyze the article above and provide a JSON response with the following fields:
+        Analyze the article in SECTION 2 and provide a JSON response with the following fields:
         - summary: A concise 2-3 sentence summary.
         - relevance_score: Integer 1-10 (how relevant is this to the PRIMARY company's goals?).
         - relevance_reasoning: A short sentence explaining WHY this score was given.
         - impact_score: Integer 1-10 (how big is the potential impact on the market or competitors?).
-        - key_entities: A list of important companies, people, or technologies mentioned.
+        - key_entities: A list of important companies, people, or technologies mentioned in SECTION 2.
+
+        SCORING GUIDELINES:
+        - 0-3 (Low): Irrelevant topics. Includes: Sports, Entertainment, Politics (general/social), General News, War/Conflict, Animal/Pet health, Space/Science.
+        - 4-6 (Medium): Tangential. Includes: General healthcare trends (e.g. NHS waiting lists), adjacent technology (AI in medicine), broad market moves.
+        - 7-10 (High): Direct Relevance. MUST contain: Specific mentions of Competitors, regulations affecting *private/corporate* healthcare, or core business topics (Health Screening, blood testing).
+
+        NEGATIVE CONSTRAINTS (CRITICAL):
+        1. NO ANALOGIES: Do not score based on metaphors. "Teamwork" in sports is NOT "corporate wellness". "Astronauts" are NOT "patients".
+        2. FORBIDDEN REASONING: Do not use phrases like "resonates with", "aligns with", "similar to", "conceptually related". Use ONLY direct factual links.
+        3. INDIRECT ECONOMIC IMPACT: General economic news (pensions, taxes, inflation, cost of living, winter fuel) is LOW (0-3). Do NOT argue about "customer spending power" or "affordability".
+        4. NO AUDIENCE INFERENCE: Do NOT score high just because an article mentions a demographic (e.g. "Pensioners") that happens to be a target audience. The article MUST discuss *health services* for that audience.
+        5. HALLUCINATIONS: Do not claim the article mentions the Primary Company unless the name appears explicitly in SECTION 2.
+        6. GEOGRAPHY: Events outside UK and Ireland are Low (0-3).
+        7. QUOTE CHECK: If you give a score >= 7, your reasoning MUST include a short quote from SECTION 2. This quote MUST contain a healthcare keyword (e.g. "health", "screening", "medical", "clinic") or a Competitor Name. Generic quotes about "decisions" or "money" are invalid.
 
         RESPONSE FORMAT:
         Return ONLY valid JSON. Do not include markdown formatting or explanations.

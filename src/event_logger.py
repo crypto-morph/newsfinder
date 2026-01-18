@@ -28,9 +28,11 @@ class EventLogger:
         except Exception as e:
             print(f"Failed to write to event log: {e}")
 
-    def get_recent(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_recent(self, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         """
-        Get the most recent events.
+        Get recent events with pagination.
+        offset: Number of most recent events to skip.
+        limit: Number of events to return.
         """
         events = []
         if not os.path.exists(self.log_path):
@@ -38,16 +40,28 @@ class EventLogger:
             
         try:
             with open(self.log_path, "r", encoding="utf-8") as f:
-                # Read all lines (efficient enough for reasonable log sizes, 
-                # for massive logs we'd seek from end)
                 lines = f.readlines()
-                for line in reversed(lines):
-                    if len(events) >= limit:
-                        break
+                # We want newest first, so reverse the list
+                # Then slice based on offset and limit
+                # lines_reversed = list(reversed(lines)) # Inefficient for huge files but ok for now
+                
+                # Better: iterate backwards using index
+                total_lines = len(lines)
+                start_idx = total_lines - 1 - offset
+                end_idx = start_idx - limit
+                
+                if start_idx < 0:
+                    return []
+                    
+                # Ensure we don't go below index -1
+                stop_idx = max(end_idx, -1)
+                
+                for i in range(start_idx, stop_idx, -1):
                     try:
-                        events.append(json.loads(line))
+                        events.append(json.loads(lines[i]))
                     except json.JSONDecodeError:
                         continue
+                        
         except Exception as e:
             print(f"Failed to read event log: {e}")
             

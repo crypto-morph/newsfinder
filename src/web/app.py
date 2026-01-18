@@ -26,12 +26,13 @@ import yaml
 
 from src.aggregator.rss_scraper import RSSNewsAggregator
 from src.analysis.llm_client import OllamaClient
+from src.analysis.verification_service import VerificationService
 from src.context_profiler import CompanyContextProfiler
 from src.database.chroma_client import NewsDatabase
 from src.feedback import append_feedback, filter_tags, get_bad_tags
 from src.pipeline import IngestionPipeline
 from src.settings import load_config
-from src.web.logging_service import EventLogger
+from src.event_logger import EventLogger
 
 import logging
 
@@ -43,6 +44,7 @@ event_logger = EventLogger()
 NAV_LINKS = [
     {"label": "Dashboard", "endpoint": "dashboard", "icon": "mdi-view-dashboard"},
     {"label": "Articles", "endpoint": "articles_view", "icon": "mdi-file-document-multiple-outline"},
+    {"label": "LLM Verification", "endpoint": "verification_view", "icon": "mdi-shield-check"},
     {"label": "RAG Explorer", "endpoint": "explore", "icon": "mdi-magnify"},
     {"label": "Discovery", "endpoint": "discovery", "icon": "mdi-compass-outline"},
     {"label": "Sources", "endpoint": "sources", "icon": "mdi-rss"},
@@ -156,6 +158,17 @@ def register_routes(app: Flask) -> None:
         bad_tags = get_bad_tags(feedback_log)
 
         for article in articles:
+            # Fix list fields that might be strings
+            if isinstance(article.get("key_entities"), str):
+                article["key_entities"] = [k.strip() for k in article["key_entities"].split(",") if k.strip()]
+            
+            if isinstance(article.get("topic_tags"), str):
+                article["topic_tags"] = [t.strip() for t in article["topic_tags"].split(",") if t.strip()]
+
+            # Ensure published date is consistent
+            if not article.get("published") and article.get("published_date"):
+                article["published"] = article["published_date"]
+
             summary_text = article.get("summary_text", "")
             combined_text = f"{article.get('title', '')} {summary_text}".lower()
             article["entity_tags"] = article.get("key_entities") or []
@@ -204,9 +217,16 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/articles")
     def articles_view():
+        cfg = current_config()
         db = get_db()
         processed_articles = db.get_all_articles(limit=200) # reasonable limit for view
         cached_articles = load_cached_articles()
+        
+        # Load verifications to merge
+        service = VerificationService(cfg)
+        recent_verifications = service.get_recent_verifications(limit=500)
+        # Create map by URL
+        ver_map = {v.get("article_url"): v for v in recent_verifications}
         
         # Determine skipped items (in cache but not in processed DB)
         processed_urls = set(a.get("url") for a in processed_articles if a.get("url"))
@@ -215,11 +235,43 @@ def register_routes(app: Flask) -> None:
             if a.get("url") not in processed_urls
         ]
         
+        # Fixup processed articles
+        for a in processed_articles:
+            # Fix tags (stored as comma-string in DB)
+            if isinstance(a.get("topic_tags"), str):
+                a["topic_tags"] = [t.strip() for t in a["topic_tags"].split(",") if t.strip()]
+            
+            # Attach verification
+            if a.get("url") in ver_map:
+                a["verification"] = ver_map[a["url"]]
+                
+            # Ensure published date is top level
+            if not a.get("published") and a.get("published_date"):
+                a["published"] = a["published_date"]
+        
         return render_template(
             "articles.html",
             processed=processed_articles,
             skipped=skipped_articles,
             active_page="articles_view"
+        )
+
+    @app.route("/verification")
+    def verification_view():
+        cfg = current_config()
+        service = VerificationService(cfg)
+        verifications = service.get_recent_verifications(limit=50)
+        
+        ver_cfg = cfg.get("verification", {})
+        
+        return render_template(
+            "verification.html",
+            verifications=verifications,
+            active_page="verification_view",
+            local_model=cfg["llm"]["model"],
+            provider_model=ver_cfg.get("model", "Unknown"),
+            sample_rate_high=ver_cfg.get("sample_rate_interesting", 1.0),
+            sample_rate_random=ver_cfg.get("sample_rate_random", 0.1)
         )
 
     @app.route("/explore")
@@ -691,7 +743,8 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/events")
     def api_events():
         limit = int(request.args.get("limit", 50))
-        return jsonify(event_logger.get_recent(limit))
+        offset = int(request.args.get("offset", 0))
+        return jsonify(event_logger.get_recent(limit, offset))
 
     @app.route("/api/pipeline/fetch", methods=["POST"])
     def api_pipeline_fetch():

@@ -37,8 +37,16 @@ pipeline:
     impact: 7
 llm:
   base_url: http://localhost:11434
-  model: qwen2.5:1.5b
+  model: llama3.2:3b
   embedding_model: all-minilm
+
+verification:
+  enabled: true
+  provider: openrouter
+  model: google/gemini-2.0-flash-001
+  sample_rate_interesting: 1.0  # Verify 100% of high relevance items
+  sample_rate_random: 1.0       # Verify 100% of all other items (Total Verification)
+  log_file: logs/verification.jsonl
 storage:
   chroma_dir: chroma_db
   alerts_log: logs/alerts.log

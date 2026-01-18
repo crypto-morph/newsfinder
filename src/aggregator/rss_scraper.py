@@ -7,6 +7,7 @@ import time
 import os
 import json
 import hashlib
+from src.archive_manager import ArchiveManager
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,9 @@ class RSSNewsAggregator:
         self.cache_dir = cache_dir
         if self.cache_dir:
             os.makedirs(self.cache_dir, exist_ok=True)
+        
+        # Initialize Archive Manager for Parquet support
+        self.archive_manager = ArchiveManager()
 
     def _fetch_feed(self, feed_url: str) -> tuple[Optional[feedparser.FeedParserDict], str]:
         try:
@@ -91,6 +95,14 @@ class RSSNewsAggregator:
             
             except Exception as e:
                 logger.error(f"Error fetching feed {feed}: {e}")
+        
+        # Batch save new articles to parquet archive
+        if all_articles:
+            try:
+                logger.info(f"Archiving {len(all_articles)} articles to Parquet...")
+                self.archive_manager.save_articles(all_articles)
+            except Exception as e:
+                logger.error(f"Failed to archive articles: {e}")
                 
         return all_articles
 
@@ -158,7 +170,15 @@ class RSSNewsAggregator:
         Scrapes the main text content from a news article URL.
         Includes heuristics for common UK news sites.
         """
-        # Check cache first
+        # 1. Check Parquet Archive (Hugging Face sync or local archive)
+        if self.archive_manager:
+            published_date = metadata.get("published") if metadata else None
+            archived_article = self.archive_manager.get_article(url, published_date)
+            if archived_article and archived_article.get("content"):
+                logger.debug(f"Archive hit for {url}")
+                return archived_article.get("content", "")
+
+        # 2. Check JSON cache
         cache_path = self._get_cache_path(url)
         if cache_path and os.path.exists(cache_path):
             try:

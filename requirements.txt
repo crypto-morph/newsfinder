@@ -6,3 +6,6 @@ requests
 apscheduler
 pyyaml
 feedparser
+pandas
+pyarrow
+datasets

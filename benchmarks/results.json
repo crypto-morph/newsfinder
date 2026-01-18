@@ -1,0 +1,98 @@
+[
+  {
+    "model": "qwen2.5:1.5b",
+    "warmup_time": 3.868412494659424,
+    "total_time": 11.147106885910034,
+    "avg_time_per_doc": 2.7867767214775085,
+    "articles": [
+      {
+        "id": "test_001_relevant",
+        "duration": 4.700632095336914,
+        "score": 7,
+        "raw_score": 7,
+        "expected": "high",
+        "match": true,
+        "reasoning": "This article is directly relevant as it focuses on Bupa's expansion of its corporate health services market, which aligns with Bluecrest Wellness's goals of promoting early detection and expanding preventive health screening reach. The initiative mentions specific improvements like blood pressure checks and mental health support.",
+        "summary": "Bupa launches new corporate wellness offerings in the UK, aiming to improve employee health screening for large employers."
+      },
+      {
+        "id": "test_002_irrelevant",
+        "duration": 2.6088948249816895,
+        "score": 6,
+        "raw_score": 6,
+        "expected": "low",
+        "match": false,
+        "reasoning": "This sports news article is tangential to the PRIMARY company's goals as it discusses general healthcare trends and does not specifically mention any aspect of health screening or preventive health services provided by Bluecrest Wellness. However, since the Yankees are a prominent team in New York, which shares many consumers with Bluecrest Wellness's target market, this could potentially influence consumer perception regarding corporate values.",
+        "summary": "The New York Yankees secured a decisive win over the Red Sox in a highly anticipated baseball game at Yankee Stadium."
+      },
+      {
+        "id": "test_003_tech",
+        "duration": 2.040778875350952,
+        "score": 7,
+        "raw_score": 7,
+        "expected": "medium",
+        "match": false,
+        "reasoning": "The technology is relevant as it could accelerate drug discovery for various diseases and is being licensed to pharmaceutical giants. This aligns well with the PRIMARY COMPANY's goals of promoting early detection services in preventive health screening.",
+        "summary": "A new AI algorithm has developed to predict protein folding with high accuracy, potentially accelerating drug discovery for various diseases."
+      },
+      {
+        "id": "test_004_competitor",
+        "duration": 1.7965247631072998,
+        "score": 7,
+        "raw_score": 7,
+        "expected": "high",
+        "match": true,
+        "reasoning": "The article mentions a specific company (Nuffield Health) that is directly related to the PRIMARY COMPANY's goals of expanding preventive health screening reach and promoting early detection services.",
+        "summary": "Nuffield Health reports growth in gym memberships due to increased health consciousness post-pandemic."
+      }
+    ]
+  },
+  {
+    "model": "llama3.2:3b",
+    "warmup_time": 4.169217586517334,
+    "total_time": 26.390732288360596,
+    "avg_time_per_doc": 6.597683072090149,
+    "articles": [
+      {
+        "id": "test_001_relevant",
+        "duration": 8.131396770477295,
+        "score": 9,
+        "raw_score": 9,
+        "expected": "high",
+        "match": true,
+        "reasoning": "High relevance due to direct mention of core business topic (health screening) and competitor (Nuffield Health, Randox Health)",
+        "summary": "Bupa expands corporate wellness offerings in the UK with new health screening packages, aiming to improve early detection of chronic diseases among employees."
+      },
+      {
+        "id": "test_002_irrelevant",
+        "duration": 5.319856643676758,
+        "score": 1,
+        "raw_score": 1,
+        "expected": "low",
+        "match": true,
+        "reasoning": "This article is unrelated to Bluecrest Wellness's goals of expanding preventive health screening reach and promoting early detection services.",
+        "summary": "The New York Yankees won a decisive game against the Red Sox, securing their position at the top of their division."
+      },
+      {
+        "id": "test_003_tech",
+        "duration": 6.80145001411438,
+        "score": 4,
+        "raw_score": 4,
+        "expected": "medium",
+        "match": true,
+        "reasoning": "The article is tangential to the PRIMARY company's goals as it discusses technology that may impact pharmaceutical companies but does not directly relate to health screening or wellness packages.",
+        "summary": "Researchers developed a new AI algorithm to predict protein structures, which could accelerate drug discovery for various diseases."
+      },
+      {
+        "id": "test_004_competitor",
+        "duration": 6.137746095657349,
+        "score": 8,
+        "raw_score": 8,
+        "expected": "high",
+        "match": true,
+        "reasoning": "This score is given because the article directly relates to Nuffield Health's business and industry trends in the UK healthcare market.",
+        "summary": "Nuffield Health sees 15% rise in gym memberships due to post-pandemic health consciousness"
+      }
+    ]
+  }
+]

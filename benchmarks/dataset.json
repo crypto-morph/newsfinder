@@ -1,0 +1,30 @@
+[
+    {
+        "id": "test_001_relevant",
+        "title": "Bupa expands corporate wellness offerings in the UK",
+        "content": "Bupa has announced a new range of health screening packages tailored for large UK employers. The initiative aims to improve early detection of chronic diseases among the workforce. 'This is a significant step in our mission to support employee wellbeing,' said the CEO. The new services include on-site blood pressure checks and mental health support. Analysts predict this will increase Bupa's market share in the B2B sector.",
+        "expected_relevance": "high",
+        "tags": ["corporate health", "wellness", "uk market"]
+    },
+    {
+        "id": "test_002_irrelevant",
+        "title": "New York Yankees win decisive game against Red Sox",
+        "content": "In a thrilling match last night at Yankee Stadium, the home team secured a 5-3 victory. The game was marked by a spectacular home run in the 7th inning. Fans celebrated late into the night. This victory places the Yankees at the top of their division.",
+        "expected_relevance": "low",
+        "tags": ["sports", "baseball", "usa"]
+    },
+    {
+        "id": "test_003_tech",
+        "title": "New AI algorithm predicts protein folding with high accuracy",
+        "content": "Researchers have developed a new deep learning model capable of predicting protein structures. This breakthrough could accelerate drug discovery for various diseases. While not a direct healthcare service, the technology is expected to be licensed to pharmaceutical giants.",
+        "expected_relevance": "medium",
+        "tags": ["ai", "tech", "biotech"]
+    },
+    {
+        "id": "test_004_competitor",
+        "title": "Nuffield Health reports growth in gym memberships",
+        "content": "Nuffield Health has seen a 15% rise in gym memberships across its UK locations. The company attributes this to a post-pandemic surge in health consciousness. They are also expanding their physiotherapy services to meet demand.",
+        "expected_relevance": "high",
+        "tags": ["competitor", "fitness", "uk"]
+    }
+]

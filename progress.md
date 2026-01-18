@@ -19,6 +19,10 @@ The News Finder system is fully implemented. It supports multi-company competiti
 - **Sources**: Manage RSS feeds with live preview.
 - **Config loader** with migration support for multi-company schema. @src/settings.py
 - **Tag feedback loop** for logging corrections. @src/feedback.py
+- **Verification Service**: Multi-model auditing via OpenRouter (Gemini/GPT-4o) to flag hallucinations. @src/analysis/verification_service.py
+- **Parquet Archiving**: Unified storage for scraped data and Hugging Face datasets (`data/archive/YYYY-MM/`). @src/archive_manager.py
+- **Hugging Face Sync**: Tools to download monthly archives directly from HF. @scripts/sync_hf_archive.py
+- **Prompt Hardening**: Strict scoring rules to prevent hallucinations (Geography, Analogies, Evidence Quotes).
 
 ### 🚧 In Progress / Partial
 - **Scheduler**: Currently manual run via UI. `APScheduler` dependency exists but no `main.py` entrypoint for automated background runs yet (UI-driven workflow preferred by user for now).
@@ -29,12 +33,12 @@ The News Finder system is fully implemented. It supports multi-company competiti
 ## Spec alignment notes
 - **Strategic Context**: LLM prompt updated to consider "Strategic Landscape" (Primary vs Competitors) for impact scoring.
 - **Relevance scoring**: Driven by structured goals of the *Primary* company.
+- **Geography Constraint**: Strictly limited to UK & Ireland for relevance scoring.
 
 ## Next Recommended Steps
-1.  Run the web server: `./newsctl start`
-2.  Navigate to `http://localhost:5000`
-3.  Configure companies and keywords in the "Config" tab.
-4.  Run the pipeline from the "Dashboard" to ingest news.
+1.  **Backfill History**: Run `python scripts/sync_hf_archive.py --start 2024-01` to get historical data.
+2.  **Verify**: Use the new "LLM Verification" tab to check the local model's accuracy.
+3.  **Tune**: Adjust keywords in the UI based on what you find in Discovery mode.
 
 ## Notes
 - Triple-quote syntax bug in `context_profiler.py` fixed.

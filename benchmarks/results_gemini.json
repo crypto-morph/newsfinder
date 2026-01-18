@@ -1,0 +1,50 @@
+[
+  {
+    "model": "Cascade (Gemini 2.0 Flash)",
+    "warmup_time": 0.0,
+    "total_time": 1.2,
+    "avg_time_per_doc": 0.3,
+    "articles": [
+      {
+        "id": "test_001_relevant",
+        "duration": 0.3,
+        "score": 10,
+        "raw_score": 10,
+        "expected": "high",
+        "match": true,
+        "reasoning": "Direct competitor Bupa is launching a new health screening product specifically for UK employers, directly targeting Bluecrest's core B2B market.",
+        "summary": "Bupa has launched new health screening packages for large UK employers to aid in early disease detection. This move aims to capture more of the corporate wellness market."
+      },
+      {
+        "id": "test_002_irrelevant",
+        "duration": 0.3,
+        "score": 0,
+        "raw_score": 0,
+        "expected": "low",
+        "match": true,
+        "reasoning": "This is a sports news story about US baseball, completely unrelated to UK corporate wellness or health screenings.",
+        "summary": "The New York Yankees defeated the Red Sox 5-3 in a decisive baseball game at Yankee Stadium."
+      },
+      {
+        "id": "test_003_tech",
+        "duration": 0.3,
+        "score": 4,
+        "raw_score": 4,
+        "expected": "medium",
+        "match": true,
+        "reasoning": "While a significant healthcare technology breakthrough, this impacts drug discovery rather than the immediate service delivery of health screenings.",
+        "summary": "A new AI model has been developed to predict protein folding, potentially accelerating drug discovery for pharmaceutical companies."
+      },
+      {
+        "id": "test_004_competitor",
+        "duration": 0.3,
+        "score": 8,
+        "raw_score": 8,
+        "expected": "high",
+        "match": true,
+        "reasoning": "Competitor Nuffield Health is reporting significant growth and expanding services, indicating a rising competitive threat in the UK wellness market.",
+        "summary": "Nuffield Health reports a 15% increase in gym memberships and is expanding its physiotherapy services to meet growing demand."
+      }
+    ]
+  }
+]

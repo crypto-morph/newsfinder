@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, List
 
 from src.analysis.llm_client import OllamaClient
+from src.analysis.verification_service import VerificationService
 from src.aggregator.rss_scraper import RSSNewsAggregator
 from src.database.chroma_client import NewsDatabase
 from src.settings import load_config
@@ -30,6 +31,7 @@ class IngestionPipeline:
             model=self.config["llm"]["model"],
             embedding_model=self.config["llm"]["embedding_model"],
         )
+        self.verification_service = VerificationService(self.config)
         chroma_dir = self.config["storage"]["chroma_dir"]
         self.db = NewsDatabase(persist_directory=chroma_dir)
 
@@ -83,8 +85,16 @@ class IngestionPipeline:
             return result
 
         # 3. LLM Analysis
+        company_context = self._load_company_context()
         analysis = self.llm_client.analyze_article(
-            article["content"], context=self._load_company_context()
+            article["content"], context=company_context
+        )
+        
+        # 3b. LLM Verification (OpenRouter)
+        self.verification_service.verify(
+            article=article,
+            local_result=analysis,
+            context=company_context
         )
         
         # 4. Topic Extraction

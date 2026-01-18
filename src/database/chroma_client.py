@@ -27,12 +27,20 @@ class NewsDatabase:
         """
         Add an article to the database.
         """
+        # Ensure metadata values are primitives (Chroma doesn't support lists in metadata)
+        clean_metadata = {}
+        for k, v in metadata.items():
+            if isinstance(v, list):
+                clean_metadata[k] = ", ".join(str(x) for x in v)
+            else:
+                clean_metadata[k] = v
+                
         try:
             self.collection.add(
                 ids=[article_id],
                 documents=[text],
                 embeddings=[embedding],
-                metadatas=[metadata]
+                metadatas=[clean_metadata]
             )
             logger.info(f"Added article {article_id} to database.")
         except Exception as e:

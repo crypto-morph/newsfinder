@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container is-fluid">
+    <div class="columns is-vcentered mb-5">
+        <div class="column">
+            <h1 class="title">
+                <span class="icon is-large has-text-info">
+                    <i class="mdi mdi-shield-check"></i>
+                </span>
+                LLM Verification
+            </h1>
+            <h2 class="subtitle">
+                Auditing local model performance against {{ provider_model }}
+            </h2>
+        </div>
+        <div class="column is-narrow">
+            <div class="tags has-addons">
+                <span class="tag is-dark">Local Model</span>
+                <span class="tag is-primary">{{ local_model }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% if not verifications %}
+    <div class="notification is-info is-light">
+        <button class="delete"></button>
+        No verification records found yet. Run the pipeline to generate audits.
+        <br>
+        <small>Sampling Rates: High Relevance: {{ sample_rate_high*100 }}% | Random: {{ sample_rate_random*100 }}%</small>
+    </div>
+    {% else %}
+    
+    <div class="table-container">
+        <table class="table is-fullwidth is-hoverable is-striped">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th style="width: 20%;">Article</th>
+                    <th class="has-text-centered">Local Score</th>
+                    <th>Local Reasoning</th>
+                    <th class="has-text-centered">Remote Score</th>
+                    <th>Remote Reasoning</th>
+                    <th class="has-text-centered">Diff</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in verifications %}
+                <tr class="{% if v.flagged %}has-background-danger-light{% endif %}">
+                    <td class="is-size-7" title="{{ v.timestamp }}">
+                        {{ v.timestamp.split('T')[0] }}<br>
+                        {{ v.timestamp.split('T')[1][:5] }}
+                    </td>
+                    <td>
+                        <a href="{{ v.article_url }}" target="_blank" class="has-text-weight-bold">
+                            {{ v.article_title }}
+                        </a>
+                    </td>
+                    
+                    <!-- Local Result -->
+                    <td class="has-text-centered">
+                        <span class="tag is-medium 
+                            {% if v.local_score >= 7 %}is-success
+                            {% elif v.local_score >= 4 %}is-warning
+                            {% else %}is-light{% endif %}">
+                            {{ v.local_score }}
+                        </span>
+                    </td>
+                    <td class="is-size-7">
+                        {{ v.local_reasoning }}
+                    </td>
+
+                    <!-- Remote Result -->
+                    <td class="has-text-centered">
+                        <span class="tag is-medium 
+                            {% if v.remote_score >= 7 %}is-success
+                            {% elif v.remote_score >= 4 %}is-warning
+                            {% else %}is-light{% endif %}">
+                            {{ v.remote_score }}
+                        </span>
+                    </td>
+                    <td class="is-size-7">
+                        {{ v.remote_reasoning }}
+                    </td>
+
+                    <!-- Discrepancy -->
+                    <td class="has-text-centered">
+                        {% if v.flagged %}
+                            <span class="tag is-danger has-text-weight-bold">
+                                <i class="mdi mdi-alert mr-1"></i> {{ v.discrepancy }}
+                            </span>
+                        {% elif v.discrepancy == 0 %}
+                            <span class="tag is-light is-success">
+                                <i class="mdi mdi-check"></i>
+                            </span>
+                        {% else %}
+                            <span class="tag is-light">
+                                {{ v.discrepancy }}
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

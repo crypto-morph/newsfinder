@@ -201,12 +201,18 @@
         btnEl: document.getElementById('console-run-btn'),
         chevronEl: document.getElementById('console-chevron'),
         statusEl: document.getElementById('console-status'),
+        currentOffset: 0,
+        isLoadingHistory: false,
         
         toggle: function() {
             this.isOpen = !this.isOpen;
             if (this.isOpen) {
                 this.el.classList.add('is-open');
                 this.chevronEl.innerHTML = '<i class="mdi mdi-chevron-down"></i>';
+                // Scroll to bottom on open if near bottom, or just let it be
+                if (this.currentOffset === 0) {
+                     this.logsEl.scrollTop = this.logsEl.scrollHeight;
+                }
             } else {
                 this.el.classList.remove('is-open');
                 this.chevronEl.innerHTML = '<i class="mdi mdi-chevron-up"></i>';
@@ -219,40 +225,30 @@
 
         clear: function() {
             this.logsEl.innerHTML = '';
+            this.currentOffset = 0;
+            this.log('Logs cleared.', 'info');
         },
 
         log: function(msg, type='info', details=null) {
-            const line = document.createElement('p');
-            const time = new Date().toLocaleTimeString();
-            let colorClass = `log-${type}`;
-            
-            line.innerHTML = `<span class="log-time">[${time}]</span> <span class="${colorClass}">${msg}</span>`;
-            
-            if (details) {
-                // Add simplified detail view if useful
-                // line.innerHTML += ` <span class="has-text-grey is-size-7">${JSON.stringify(details)}</span>`;
-            }
-
+            const line = this.createLogLine(msg, type, Date.now() / 1000);
             this.logsEl.appendChild(line);
             
             if (document.getElementById('auto-scroll').checked) {
                 this.logsEl.scrollTop = this.logsEl.scrollHeight;
             }
         },
-
-        pollRecentEvents: async function() {
-            if (this.isRunning) return; // Don't poll while running pipeline locally to avoid clutter
-            try {
-                // Only poll if console is somewhat relevant or just periodically
-                const resp = await fetch("{{ url_for('api_events', limit=10) }}");
-                const events = await resp.json();
-                // Simple logic: just show them if they are newer than last check? 
-                // For now, let's just log them if they aren't duplicates.
-                // Actually, let's just use this for initial load or manual refresh.
-                // A true polling system needs a last_timestamp tracker.
-            } catch (e) {
-                console.error(e);
+        
+        createLogLine: function(msg, type, timestamp) {
+            const line = document.createElement('p');
+            const time = new Date(timestamp * 1000).toLocaleTimeString();
+            let colorClass = `log-${type}`;
+            // Map legacy types if needed
+            if (!['info', 'success', 'warning', 'error', 'pipeline'].includes(type)) {
+                colorClass = 'log-info';
             }
+            
+            line.innerHTML = `<span class="log-time" style="opacity:0.6">[${time}]</span> <span class="${colorClass}">${msg}</span>`;
+            return line;
         },
 
         runPipeline: async function() {
@@ -349,33 +345,72 @@
             }
         },
         
-        // Initial loader for persisted events
         loadHistory: async function() {
+            if (this.isLoadingHistory) return;
+            this.isLoadingHistory = true;
+            
+            // If offset is 0, we are loading initial history, likely clear container first?
+            // But we might have real-time logs already.
+            // Let's assume offset=0 is called on init.
+            
+            const limit = 20;
             try {
-                const resp = await fetch("{{ url_for('api_events', limit=20) }}");
+                const resp = await fetch(`{{ url_for('api_events') }}?limit=${limit}&offset=${this.currentOffset}`);
                 const events = await resp.json();
-                // Reverse to show oldest first in this context if we append
-                events.reverse().forEach(e => {
-                    // Map event types to styles
-                    let type = 'info';
-                    if (e.level === 'error') type = 'error';
-                    if (e.level === 'warning') type = 'warning';
-                    if (e.level === 'success') type = 'success';
-                    if (e.type === 'pipeline') type = 'pipeline';
-                    
-                    // Convert timestamp
-                    const time = new Date(e.timestamp * 1000).toLocaleTimeString();
-                    const line = document.createElement('p');
-                    line.innerHTML = `<span class="log-time" style="opacity:0.6">[${time}]</span> <span class="log-${type}">${e.message}</span>`;
-                    this.logsEl.appendChild(line);
+                
+                if (!events || events.length === 0) {
+                    this.isLoadingHistory = false;
+                    return;
+                }
+
+                // API returns [Newest, ..., Oldest] in that slice
+                // We want to display them chronologically.
+                // If scrolling up (prepending), we want the batch to be inserted at top.
+                // The batch itself needs to be ordered Oldest -> Newest.
+                const fragment = document.createDocumentFragment();
+                
+                // events is [Newest -> Oldest]
+                // reverse to [Oldest -> Newest] for display order
+                events.slice().reverse().forEach(e => {
+                    const line = this.createLogLine(e.message, e.level === 'pipeline' ? 'pipeline' : e.level, e.timestamp);
+                    fragment.appendChild(line);
                 });
-                // Scroll to bottom
-                this.logsEl.scrollTop = this.logsEl.scrollHeight;
+
+                const oldScrollHeight = this.logsEl.scrollHeight;
+                const wasAtTop = this.logsEl.scrollTop === 0;
+
+                if (this.currentOffset === 0) {
+                    // Initial load: append to whatever "System ready" msg might be there
+                    // or just prepend to keep real-time logs at bottom?
+                    // Actually, if we just loaded the page, logsEl is mostly empty.
+                    // We append.
+                    this.logsEl.appendChild(fragment);
+                    // Scroll to bottom initially
+                    this.logsEl.scrollTop = this.logsEl.scrollHeight;
+                } else {
+                    // Prepend
+                    this.logsEl.insertBefore(fragment, this.logsEl.firstChild);
+                    // Restore scroll position
+                    const newScrollHeight = this.logsEl.scrollHeight;
+                    this.logsEl.scrollTop = newScrollHeight - oldScrollHeight;
+                }
+
+                this.currentOffset += events.length;
+                
             } catch (e) {
                 console.warn("Could not load event history", e);
+            } finally {
+                this.isLoadingHistory = false;
             }
         }
       };
+
+      // Scroll listener for infinite scroll
+      document.getElementById('console-logs').addEventListener('scroll', function(e) {
+          if (this.scrollTop === 0) {
+              SystemConsole.loadHistory();
+          }
+      });
 
       // Load history on init
       document.addEventListener('DOMContentLoaded', () => {
