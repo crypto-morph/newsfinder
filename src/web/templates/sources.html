@@ -15,7 +15,7 @@
           <ul>
             {% for feed in feeds %}
             <li class="{% if loop.index0 == selected_index %}is-active{% endif %}">
-              <a href="{{ url_for('sources', index=loop.index0) }}">
+              <a href="{{ url_for('config.sources', index=loop.index0) }}">
                 {{ feed.name or ('Source ' ~ loop.index) }}
               </a>
             </li>

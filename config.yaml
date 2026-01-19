@@ -13,7 +13,7 @@ feeds:
 - name: Guardian Rss
   url: https://www.theguardian.com/uk/rss
 pipeline:
-  articles_per_feed: 3
+  articles_per_feed: 15
   keywords:
   - blood test
   - bluecrest

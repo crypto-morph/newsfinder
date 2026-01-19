@@ -268,7 +268,7 @@
                 // 1. Warmup
                 this.log('Warming up AI models...', 'info');
                 try {
-                    const wResp = await fetch("{{ url_for('api_pipeline_warmup') }}", {method: 'POST'});
+                    const wResp = await fetch("{{ url_for('api.api_pipeline_warmup') }}", {method: 'POST'});
                     const wData = await wResp.json();
                     if (wData.status === 'success') this.log('AI models ready.', 'success');
                     else this.log('Warmup warning: ' + wData.message, 'warning');
@@ -278,7 +278,7 @@
 
                 // 2. Fetch
                 this.log('Fetching articles...', 'info');
-                const fResp = await fetch("{{ url_for('api_pipeline_fetch') }}", {method: 'POST'});
+                const fResp = await fetch("{{ url_for('api.api_pipeline_fetch') }}", {method: 'POST'});
                 const fData = await fResp.json();
                 
                 if (fData.status === 'error') throw new Error(fData.message);
@@ -296,7 +296,7 @@
                         this.log(`Analyzing: ${article.title.substring(0, 50)}...`, 'info');
                         
                         try {
-                            const pResp = await fetch("{{ url_for('api_pipeline_process') }}", {
+                            const pResp = await fetch("{{ url_for('api.api_pipeline_process') }}", {
                                 method: 'POST',
                                 headers: {'Content-Type': 'application/json'},
                                 body: JSON.stringify(article)
@@ -318,7 +318,7 @@
                     }
                     
                     // 4. Complete
-                    await fetch("{{ url_for('api_pipeline_complete') }}", {
+                    await fetch("{{ url_for('api.api_pipeline_complete') }}", {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({count: processed})
@@ -355,7 +355,7 @@
             
             const limit = 20;
             try {
-                const resp = await fetch(`{{ url_for('api_events') }}?limit=${limit}&offset=${this.currentOffset}`);
+                const resp = await fetch(`/api/events?limit=${limit}&offset=${this.currentOffset}`);
                 const events = await resp.json();
                 
                 if (!events || events.length === 0) {

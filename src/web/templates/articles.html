@@ -191,7 +191,8 @@
                 <tr>
                     <th>Article</th>
                     <th>Summary Preview</th>
-                    <th>Date Cached</th>
+                    <th>Published</th>
+                    <th>Cached</th>
                 </tr>
             </thead>
             <tbody>
@@ -206,9 +207,16 @@
                     <td class="is-size-7">
                         {{ article.summary|truncate(150) }}
                     </td>
+                    <td class="is-size-7 has-text-grey">
+                        {{ article.published }}
+                    </td>
                     <td class="is-size-7 has-text-grey-light">
                         <!-- Timestamp to readable date -->
+                        {% if article.timestamp %}
                         <span class="cached-time" data-ts="{{ article.timestamp }}"></span>
+                        {% else %}
+                        —
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

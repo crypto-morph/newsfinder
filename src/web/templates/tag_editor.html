@@ -46,7 +46,7 @@
             {{ tag }}
             <details class="ml-2">
               <summary class="is-size-7 is-clickable has-text-danger">Report</summary>
-              <form method="post" action="{{ url_for('tag_feedback') }}" class="mt-2 box" style="position: absolute; z-index: 20; min-width: 200px;">
+              <form method="post" action="{{ url_for('dashboard.tag_feedback') }}" class="mt-2 box" style="position: absolute; z-index: 20; min-width: 200px;">
                 <input type="hidden" name="article_id" value="{{ article.id }}" />
                 <input type="hidden" name="tag" value="{{ tag }}" />
                 <div class="field">

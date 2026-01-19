@@ -63,6 +63,8 @@ def test_fetch_recent_articles(mock_fetch_feed, mock_scrape, aggregator):
     assert articles[0]["title"] == "Test Article"
     assert articles[0]["content"] == "Scraped Content"
     assert articles[0]["source"] == "Test Feed"
+    assert "timestamp" in articles[0]
+    assert articles[0]["timestamp"] > 0
     
     # Verify archive was called
     aggregator.archive_manager.save_articles.assert_called_once()

@@ -86,6 +86,7 @@ class RSSNewsAggregator:
                         "title": entry.title,
                         "link": entry.link,
                         "published": entry.get('published', time.strftime("%a, %d %b %Y %H:%M:%S +0000")), # Fallback time
+                        "timestamp": time.time(), # Capture crawl time
                         "summary": self._clean_summary(entry.get("summary", "")),
                         "content": content,
                         "source": source_name
