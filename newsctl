@@ -13,7 +13,7 @@ fi
 
 command="${1:-}";
 if [[ -z "${command}" ]]; then
-  echo "Usage: ./newsctl {start|stop|restart|status|reset}"
+  echo "Usage: ./newsctl {start|stop|restart|status|reset|pipeline|profile|import}"
   exit 1
 fi
 
@@ -25,9 +25,19 @@ case "${command}" in
     python "${ROOT_DIR}/scripts/ui_service.py" stop
     python "${ROOT_DIR}/scripts/ui_service.py" start
     ;;
+  pipeline)
+    python "${ROOT_DIR}/scripts/run_pipeline.py"
+    ;;
+  profile)
+    python "${ROOT_DIR}/scripts/run_profiler.py"
+    ;;
+  import)
+    shift
+    python "${ROOT_DIR}/scripts/backfill_sitemaps.py" "$@"
+    ;;
   *)
     echo "Unknown command: ${command}"
-    echo "Usage: ./newsctl {start|stop|restart|status|reset}"
+    echo "Usage: ./newsctl {start|stop|restart|status|reset|pipeline|profile|import}"
     exit 1
     ;;
  esac

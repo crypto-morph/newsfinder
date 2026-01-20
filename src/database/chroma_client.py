@@ -71,7 +71,11 @@ class NewsDatabase:
 
     def get_all_articles(self, limit: int = 1000) -> List[Dict]:
         """Return all articles in the database up to a limit."""
-        data = self.collection.peek(limit=limit)
+        try:
+            data = self.collection.peek(limit=limit)
+        except Exception as e:
+            logger.error(f"Error peeking collection: {e}")
+            return []
         if not data:
             return []
 
@@ -95,7 +99,11 @@ class NewsDatabase:
 
     def list_recent_articles(self, limit: int = 10) -> List[Dict]:
         """Peek into the collection and return recent articles with metadata."""
-        data = self.collection.peek(limit=limit * 3)
+        try:
+            data = self.collection.peek(limit=limit * 3)
+        except Exception as e:
+            logger.error(f"Error peeking collection: {e}")
+            return []
         if not data:
             return []
 
@@ -162,7 +170,7 @@ class NewsDatabase:
                     "documents": [document],
                     "metadatas": [merged_meta],
                 }
-                if embedding is not None:
+                if embedding is not None and len(embedding) > 0:
                     payload["embeddings"] = [embedding]
                 self.collection.upsert(**payload)
                 return True

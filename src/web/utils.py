@@ -36,12 +36,14 @@ def get_db() -> NewsDatabase:
         g.news_db = NewsDatabase(persist_directory=chroma_dir)
     return g.news_db
 
-def build_ollama(cfg: Dict[str, Any]) -> OllamaClient:
+def build_ollama(cfg: Dict[str, Any]):
+    from src.analysis.llm_client import LLMClient
     llm_cfg = cfg["llm"]
-    return OllamaClient(
-        base_url=llm_cfg["base_url"],
-        model=llm_cfg["model"],
-        embedding_model=llm_cfg["embedding_model"],
+    return LLMClient.create(
+        provider=llm_cfg.get("provider", "ollama"),
+        base_url=llm_cfg.get("base_url", "http://localhost:11434"),
+        model=llm_cfg.get("model"),
+        embedding_model=llm_cfg.get("embedding_model", "nomic-embed-text"),
     )
 
 def load_status(path: str) -> Dict[str, Any]:

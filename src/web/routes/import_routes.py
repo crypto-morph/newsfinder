@@ -4,6 +4,7 @@ from src.aggregator.sitemap import SitemapBackfiller
 from src.pipeline import IngestionPipeline
 import os
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -104,5 +105,6 @@ def import_view():
     return render_template(
         "import.html",
         active_page="import_view",
-        active_backfill=active_backfill
+        active_backfill=active_backfill,
+        now=datetime.now()
     )

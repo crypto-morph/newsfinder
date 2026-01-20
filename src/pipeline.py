@@ -8,12 +8,13 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, List
 
-from src.analysis.llm_client import OllamaClient
+from src.analysis.llm_client import LLMClient
 from src.analysis.verification_service import VerificationService
 from src.aggregator.rss_scraper import RSSNewsAggregator
 from src.database.chroma_client import NewsDatabase
 from src.settings import load_config
 from src.history import HistoryManager
+from src.ollama_monitor import check_ollama_status, ensure_model_available
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +28,12 @@ class IngestionPipeline:
             feed_urls=feeds, 
             cache_dir="document-cache"
         )
-        self.llm_client = OllamaClient(
-            base_url=self.config["llm"]["base_url"],
-            model=self.config["llm"]["model"],
-            embedding_model=self.config["llm"]["embedding_model"],
+        llm_config = self.config["llm"]
+        self.llm_client = LLMClient.create(
+            provider=llm_config.get("provider", "ollama"),
+            base_url=llm_config.get("base_url", "http://localhost:11434"),
+            model=llm_config.get("model"),
+            embedding_model=llm_config.get("embedding_model", "nomic-embed-text"),
         )
         self.verification_service = VerificationService(self.config)
         chroma_dir = self.config["storage"]["chroma_dir"]
@@ -107,6 +110,7 @@ class IngestionPipeline:
 
         # 6. Metadata Construction
         metadata = {
+            "id": article_id,
             "url": article["link"],
             "title": article["title"],
             "published_date": article["published"],
@@ -136,7 +140,19 @@ class IngestionPipeline:
         relevance_cutoff = alert_cfg.get("relevance", 7)
         impact_cutoff = alert_cfg.get("impact", 7)
 
-        if (
+        # Only log alert if:
+        # 1. New article (reappraised_count == 0), OR
+        # 2. Scores crossed threshold (were below, now above)
+        is_new = metadata.get("reappraised_count", 0) == 0
+        prev_rel = metadata.get("previous_relevance_score", 0)
+        prev_imp = metadata.get("previous_impact_score", 0)
+        crossed_threshold = (
+            (prev_rel < relevance_cutoff or prev_imp < impact_cutoff) and
+            metadata["relevance_score"] >= relevance_cutoff and
+            metadata["impact_score"] >= impact_cutoff
+        )
+
+        if (is_new or crossed_threshold) and (
             metadata["relevance_score"] >= relevance_cutoff
             and metadata["impact_score"] >= impact_cutoff
         ):
@@ -209,6 +225,27 @@ class IngestionPipeline:
 
     def run(self) -> List[Dict]:
         """Legacy run method for backward compatibility."""
+        # Check Ollama status before starting
+        llm_config = self.config.get("llm", {})
+        base_url = llm_config.get("base_url", "http://localhost:11434")
+        model = llm_config.get("model", "llama3.2:3b")
+        
+        logger.info("Checking Ollama status...")
+        status = check_ollama_status(base_url)
+        
+        if status["status"] == "stopped":
+            logger.error("❌ Ollama is not running! Start it with: ollama serve")
+            return []
+        elif status["status"] == "error":
+            logger.error(f"❌ Ollama error: {status.get('message')}")
+            return []
+        
+        logger.info(f"✓ Ollama is running ({len(status.get('loaded_models', []))} models loaded)")
+        
+        if not ensure_model_available(model, base_url):
+            logger.error(f"❌ Required model '{model}' not available")
+            return []
+        
         articles = self.fetch()
         processed: List[Dict] = []
         seen_urls: set[str] = set()

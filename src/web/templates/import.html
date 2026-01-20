@@ -23,7 +23,9 @@
                     <div class="field-body">
                         <div class="field">
                             <p class="control is-expanded has-icons-left">
-                                <input class="input" type="month" name="target_month" required>
+                                <input class="input" type="month" name="target_month" required 
+                                       min="2020-01" max="{{ now.strftime('%Y-%m') }}" 
+                                       value="{{ now.strftime('%Y-%m') }}">
                                 <span class="icon is-small is-left">
                                     <i class="mdi mdi-calendar"></i>
                                 </span>

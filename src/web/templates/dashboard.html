@@ -71,7 +71,9 @@
             </div>
             <div class="timeline-content">
               <p class="heading">{{ alert.timestamp }} | {{ alert.source }}</p>
-              <p class="title is-6">{{ alert.title }}</p>
+              <p class="title is-6">
+                <a href="{{ url_for('articles.articles_view') }}#article-{{ alert.id }}" class="has-text-link">{{ alert.title }}</a>
+              </p>
               <p class="subtitle is-7">Relevance {{ alert.relevance_score }} · Impact {{ alert.impact_score }}</p>
             </div>
           </div>

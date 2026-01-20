@@ -34,7 +34,7 @@
             </thead>
             <tbody>
                 {% for article in processed %}
-                <tr>
+                <tr id="article-{{ article.id }}">
                     <td>
                         <p class="title is-6 mb-1">
                             <a href="{{ article.url }}" target="_blank" class="has-text-link">
@@ -115,25 +115,25 @@
                         </div>
 
                         <!-- Status Actions -->
-                        <div class="buttons has-addons are-small mb-3">
-                            <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}">
+                        <div class="buttons has-addons are-small mb-3" style="display: inline-flex;">
+                            <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}" style="display: inline;">
                                 <input type="hidden" name="status" value="High">
-                                <button class="button {% if article.status == 'High' %}is-selected is-success{% endif %}" title="Set High" {% if article.status == 'High' %}disabled{% endif %}>H</button>
+                                <button type="submit" class="button is-small {% if article.status == 'High' %}is-selected is-success{% endif %}" title="Set High" {% if article.status == 'High' %}disabled{% endif %}>H</button>
                             </form>
-                            <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}">
+                            <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}" style="display: inline;">
                                 <input type="hidden" name="status" value="Medium">
-                                <button class="button {% if article.status == 'Medium' %}is-selected is-warning{% endif %}" title="Set Medium" {% if article.status == 'Medium' %}disabled{% endif %}>M</button>
+                                <button type="submit" class="button is-small {% if article.status == 'Medium' %}is-selected is-warning{% endif %}" title="Set Medium" {% if article.status == 'Medium' %}disabled{% endif %}>M</button>
                             </form>
-                            <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}">
+                            <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}" style="display: inline;">
                                 <input type="hidden" name="status" value="Low">
-                                <button class="button {% if article.status == 'Low' %}is-selected is-light{% endif %}" title="Set Low" {% if article.status == 'Low' %}disabled{% endif %}>L</button>
+                                <button type="submit" class="button is-small {% if article.status == 'Low' %}is-selected is-light{% endif %}" title="Set Low" {% if article.status == 'Low' %}disabled{% endif %}>L</button>
                             </form>
-                             <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}">
+                             <form method="post" action="{{ url_for('articles.update_article_status', article_id=article.id) }}" style="display: inline;">
                                 <input type="hidden" name="status" value="Dismissed">
-                                <button class="button {% if article.status == 'Dismissed' %}is-selected is-grey{% endif %}" title="Dismiss" {% if article.status == 'Dismissed' %}disabled{% endif %}><i class="mdi mdi-close"></i></button>
+                                <button type="submit" class="button is-small {% if article.status == 'Dismissed' %}is-selected is-grey{% endif %}" title="Dismiss" {% if article.status == 'Dismissed' %}disabled{% endif %}><i class="mdi mdi-close"></i></button>
                             </form>
-                            <form method="post" action="{{ url_for('articles.reappraise_article', article_id=article.id) }}" onsubmit="if(confirm('Re-run analysis with current context? This may take a moment.')) { this.querySelector('button').classList.add('is-loading'); return true; } return false;">
-                                <button class="button is-info is-light ml-2" title="Reappraise / Re-analyze">
+                            <form method="post" action="{{ url_for('articles.reappraise_article', article_id=article.id) }}" style="display: inline;" onsubmit="if(confirm('Re-run analysis with current context? This may take a moment.')) { this.querySelector('button').classList.add('is-loading'); return true; } return false;">
+                                <button type="submit" class="button is-small is-info is-light ml-2" title="Reappraise / Re-analyze">
                                     <span class="icon is-small"><i class="mdi mdi-refresh"></i></span>
                                 </button>
                             </form>
@@ -193,6 +193,7 @@
                     <th>Summary Preview</th>
                     <th>Published</th>
                     <th>Cached</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -217,6 +218,15 @@
                         {% else %}
                         —
                         {% endif %}
+                    </td>
+                    <td>
+                        <form method="post" action="{{ url_for('articles.process_skipped_article') }}" style="display: inline;">
+                            <input type="hidden" name="article_url" value="{{ article.url }}">
+                            <button type="submit" class="button is-small is-primary is-light" title="Process this article">
+                                <span class="icon is-small"><i class="mdi mdi-play"></i></span>
+                                <span>Process</span>
+                            </button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}

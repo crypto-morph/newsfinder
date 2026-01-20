@@ -112,6 +112,43 @@ def reappraise_article(article_id: str):
         
     return redirect(request.referrer or url_for("articles.articles_view"))
 
+@articles_bp.route("/articles/process-skipped", methods=["POST"])
+def process_skipped_article():
+    cfg = current_config()
+    article_url = request.form.get("article_url")
+    
+    if not article_url:
+        flash("No article URL provided", "danger")
+        return redirect(url_for("articles.articles_view"))
+    
+    # Load article from archive
+    archive_mgr = ArchiveManager()
+    cached_articles = archive_mgr.get_recent_articles(limit=500)
+    article_data = next((a for a in cached_articles if a.get("url") == article_url), None)
+    
+    if not article_data:
+        flash("Article not found in cache", "danger")
+        return redirect(url_for("articles.articles_view"))
+    
+    # Process it through the pipeline
+    pipeline = IngestionPipeline(config_path="config.yaml")
+    result = pipeline.process_article({
+        "link": article_data.get("url"),
+        "title": article_data.get("title"),
+        "published": article_data.get("published", ""),
+        "source": article_data.get("source", ""),
+        "content": article_data.get("content", ""),
+        "summary": article_data.get("summary", "")
+    }, force=True)
+    
+    if result.get("status") == "imported":
+        flash(f"Article processed successfully", "success")
+        event_logger.log("pipeline", f"Manually processed skipped article: {article_data.get('title')[:50]}...", level="success")
+    else:
+        flash(f"Processing failed: {result.get('reason', 'Unknown error')}", "warning")
+    
+    return redirect(url_for("articles.articles_view"))
+
 @articles_bp.route("/articles/<article_id>/tags", methods=["GET", "POST"])
 def edit_tags(article_id: str):
     cfg = current_config()
