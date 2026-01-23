@@ -115,6 +115,60 @@
 
     <div class="card mt-5">
       <header class="card-header">
+        <p class="card-header-title">
+          <span class="icon-text">
+            <span class="icon"><i class="mdi mdi-brain"></i></span>
+            <span>LLM Prompt Rules</span>
+          </span>
+        </p>
+      </header>
+      <div class="card-content">
+        <p class="help mb-3">Add custom rules or considerations that will be incorporated into the AI analysis prompt.</p>
+        
+        {% set prompt_rules = config.get('llm', {}).get('prompt_rules', []) %}
+        {% if prompt_rules %}
+        <div class="mb-4">
+          {% for rule in prompt_rules %}
+          <div class="notification is-light py-2 px-3 mb-2">
+            <div class="level is-mobile mb-0">
+              <div class="level-left">
+                <div class="level-item">
+                  <span class="icon has-text-info mr-2"><i class="mdi mdi-chevron-right"></i></span>
+                  <span class="is-size-7">{{ rule }}</span>
+                </div>
+              </div>
+              <div class="level-right">
+                <form method="post" style="display:inline;">
+                  <input type="hidden" name="index" value="{{ loop.index0 }}">
+                  <button class="button is-small is-ghost" name="action" value="remove_prompt_rule" title="Remove">
+                    <span class="icon is-small"><i class="mdi mdi-close"></i></span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post">
+          <div class="field">
+            <div class="control">
+              <textarea class="textarea is-small" name="rule" rows="2" placeholder="e.g., Bluecrest can only test people over 18 - stories exclusively about children should be marked down to at most Medium" required></textarea>
+            </div>
+          </div>
+          <div class="field">
+            <button class="button is-small is-primary is-fullwidth" name="action" value="add_prompt_rule">
+              <span class="icon"><i class="mdi mdi-plus"></i></span>
+              <span>Add Rule</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mt-5">
+      <header class="card-header">
         <p class="card-header-title">Refresh Context</p>
       </header>
       <div class="card-content">

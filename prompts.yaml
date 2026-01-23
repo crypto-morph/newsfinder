@@ -47,17 +47,28 @@ analysis_prompt: 'You are a business intelligence analyst.
 
   - 0-3 (Low): Irrelevant topics. Includes: Sports, Entertainment, Politics (general/social),
   General News, War/Conflict, Animal/Pet health, Space/Science, Accidents/Tragedies
-  (Plane crashes, fires), Legal disputes (Trademarks, defamation).
+  (Plane crashes, fires), Legal disputes (Trademarks, defamation). Articles about
+  emigration trends without a *specific health service* context are also LOW. The
+  PRIMARY FOCUS must be on health services.
 
   - 4-6 (Medium): Tangential. Includes: General healthcare trends (e.g. NHS waiting
   lists, strikes, funding), adjacent technology (AI in medicine), broad market moves,
   healthy eating/lifestyle (without specific screening angle). Articles primarily
   about governmental responses to disease outbreaks (e.g., COVID inquiries) also fall
-  in this range.
+  in this range. General NHS news (strikes, maternity failings) is MEDIUM (4-6) unless
+  it specifically discusses outsourcing to private providers or specific diagnostic
+  technology relevant to the Primary Company. Articles about NHS mental health services
+  (e.g., ketamine clinics) are also MEDIUM (4-6). Articles primarily about general
+  biotechnology advancements or research projects are MEDIUM (4-6) at best, unless
+  a clear and direct link to the Primary Company''s core services (screening, diagnostics,
+  preventative wellness) is explicitly stated in SECTION 2.
 
   - 7-10 (High): Direct Relevance. MUST contain: Specific mentions of Competitors
   listed in Context, regulations affecting *private/corporate* healthcare, or core
   business topics (Health Screening, blood testing, diagnostics, preventative wellness).
+  Articles discussing specific patient treatments and care pathways are HIGH (7-10).
+  Articles discussing vaccination programs, specific disease outbreaks and hospital
+  responses, *OR* specific patient outcomes or quality of care issues are HIGH (7-10).
 
 
   NEGATIVE CONSTRAINTS (CRITICAL):
@@ -74,29 +85,26 @@ analysis_prompt: 'You are a business intelligence analyst.
 
   4. NO AUDIENCE INFERENCE: Do NOT score high just because an article mentions a demographic
   (e.g. "Pensioners") that happens to be a target audience. The article MUST discuss
-  *health services* for that audience explicitly targeting that demographic.
+  *health services* or *health outcomes* explicitly targeting that demographic.
 
   5. HALLUCINATIONS: Do not claim the article mentions the Primary Company or Competitors
   unless the name appears explicitly in SECTION 2.
 
   6. GEOGRAPHY: Events outside UK and Ireland are Low (0-3). Healthcare events in
-  other countries (e.g. Nigeria maternal mortality, Sudan hospital attacks) are also
-  Low (0-3).
+  other countries are also Low (0-3).
 
   7. QUOTE CHECK: If you give a score >= 7, your reasoning MUST include a short quote
   from SECTION 2. This quote MUST contain a healthcare keyword (e.g. "health", "screening",
-  "medical", "clinic", "treatment", "diagnostic") or a Competitor Name. Generic quotes
-  about "decisions" or "money" are invalid.
+  "medical", "clinic", "treatment", "diagnostic", "vaccination", "hospital", "patient",
+  "care", "jabs") or a Competitor Name. Generic quotes about "decisions" or "money"
+  are invalid. If you cannot find a relevant quote, the score should be lower than
+  7.
 
-  8. NHS NEWS: General NHS news (strikes, maternity failings) is MEDIUM (4-6) at best,
-  unless it specifically discusses outsourcing to private providers or specific diagnostic
-  technology relevant to the Primary Company. Articles about NHS mental health services
-  (e.g., ketamine clinics) are also MEDIUM (4-6).
-
-  9. BIOTECH/RESEARCH: Articles primarily about general biotechnology advancements
-  or research projects (e.g., synthetic genome project) are MEDIUM (4-6) at best,
-  unless a clear and direct link to the Primary Company''s core services (screening,
-  diagnostics, preventative wellness) is explicitly stated in SECTION 2.
+  8. PRIMARY FOCUS: Ensure the primary focus of the article aligns with health screening,
+  diagnostics, or preventative wellness. If the article is primarily about non-health
+  related topics (e.g., emigration due to non-health reasons), score accordingly low,
+  regardless of tangential health mentions. The PRIMARY FOCUS must be on delivered
+  *health services* or *patient health outcomes*, not general anxieties or trends.
 
 
   RESPONSE FORMAT:

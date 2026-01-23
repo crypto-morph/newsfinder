@@ -2,6 +2,7 @@ import yaml
 import logging
 import json
 import os
+import hashlib
 from typing import List, Dict, Any, Tuple
 from src.analysis.llm_client import OllamaClient
 from src.analysis.openrouter_client import OpenRouterClient
@@ -45,6 +46,16 @@ class PromptOptimizer:
         if not self.remote_client.api_key:
             return "Error: OpenRouter API Key missing."
 
+        # Load custom rules from config
+        with open(self.config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        custom_rules = config.get('llm', {}).get('prompt_rules', [])
+        rules_section = ""
+        if custom_rules:
+            rules_section = "\n\nCUSTOM RULES TO INCORPORATE:\n"
+            for i, rule in enumerate(custom_rules, 1):
+                rules_section += f"{i}. {rule}\n"
+
         # Format failures for the prompt
         examples = ""
         for i, f in enumerate(failures):
@@ -64,12 +75,13 @@ class PromptOptimizer:
         {current_prompt}
         
         FAILURE CASES (Where the local LLM hallucinated or scored incorrectly):
-        {examples}
+        {examples}{rules_section}
         
         TASK:
-        Rewrite the CURRENT PROMPT to address these specific failure modes.
+        Rewrite the CURRENT PROMPT to address these specific failure modes and incorporate any custom rules.
         - Add or refine "NEGATIVE CONSTRAINTS" to prevent these specific hallucinations.
         - Clarify "SCORING GUIDELINES" to align with the Remote Score logic.
+        - Incorporate the custom rules into the appropriate sections (constraints, guidelines, or scoring).
         - Keep the prompt structure (SECTION 1, SECTION 2, TASK, GUIDELINES, CONSTRAINTS, FORMAT).
         - Do not remove essential instructions, just refine them.
         
@@ -145,15 +157,17 @@ class PromptOptimizer:
             # Verification logs have 'article_url'.
             
             # Since we don't store URL as ID directly in Chroma (hashed), we need to re-hash.
-            import hashlib
             article_id = hashlib.sha256(case['article_url'].encode("utf-8")).hexdigest()
             article = db.get_article(article_id)
             
             if not article:
-                # Can't test if we don't have content
                 results.append({
                     "title": case['article_title'],
-                    "error": "Content not found in DB"
+                    "old_score": case.get('local_score', 0),
+                    "new_score": 0,
+                    "target_score": case.get('remote_score', 0),
+                    "reasoning": "Error: Content not found in DB",
+                    "improved": False
                 })
                 continue
                 
@@ -173,10 +187,13 @@ class PromptOptimizer:
                     cached = json.load(f)
                     full_text = cached.get("content", "")
             else:
-                # If we can't find full text, we can't re-run analysis effectively.
                 results.append({
                     "title": case['article_title'],
-                    "error": "Full text source not found"
+                    "old_score": case.get('local_score', 0),
+                    "new_score": 0,
+                    "target_score": case.get('remote_score', 0),
+                    "reasoning": "Error: Full text source not found",
+                    "improved": False
                 })
                 continue
 
@@ -190,21 +207,31 @@ class PromptOptimizer:
                 pass
 
             # Run Prompt
-            formatted_prompt = prompt_text.format(context=context, clipped_text=full_text[:4000])
-            response = self.local_client.generate_json(formatted_prompt)
-            
-            # Compare
-            score = response.get("relevance_score", 0)
-            target = case.get("remote_score", 0)
-            
-            results.append({
-                "title": case['article_title'],
-                "old_score": case['local_score'],
-                "new_score": score,
-                "target_score": target,
-                "reasoning": response.get("relevance_reasoning", ""),
-                "improved": abs(score - target) < abs(case['local_score'] - target)
-            })
+            try:
+                formatted_prompt = prompt_text.format(context=context, clipped_text=full_text[:4000])
+                response = self.local_client.generate_json(formatted_prompt)
+                
+                # Compare
+                score = response.get("relevance_score", 0)
+                target = case.get("remote_score", 0)
+                
+                results.append({
+                    "title": case['article_title'],
+                    "old_score": case['local_score'],
+                    "new_score": score,
+                    "target_score": target,
+                    "reasoning": response.get("relevance_reasoning", ""),
+                    "improved": abs(score - target) < abs(case['local_score'] - target)
+                })
+            except Exception as e:
+                results.append({
+                    "title": case['article_title'],
+                    "old_score": case.get('local_score', 0),
+                    "new_score": 0,
+                    "target_score": case.get('remote_score', 0),
+                    "reasoning": f"Error: {str(e)}",
+                    "improved": False
+                })
             
         return results
 

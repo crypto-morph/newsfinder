@@ -132,6 +132,28 @@ def config_view():
                 flash(f"Removed keyword: {kw_to_remove}", "success")
                 event_logger.log("config", f"Removed keyword: {kw_to_remove}", level="info")
 
+        elif action == "add_prompt_rule":
+            new_rule = request.form.get("rule", "").strip()
+            if new_rule:
+                rules = cfg.get("llm", {}).get("prompt_rules", [])
+                rules.append(new_rule)
+                updated = copy.deepcopy(cfg)
+                updated.setdefault("llm", {})["prompt_rules"] = rules
+                save_config(updated)
+                flash("Prompt rule added", "success")
+                event_logger.log("config", f"Added prompt rule", level="info")
+
+        elif action == "remove_prompt_rule":
+            index = int(request.form.get("index", -1))
+            rules = cfg.get("llm", {}).get("prompt_rules", [])
+            if 0 <= index < len(rules):
+                removed = rules.pop(index)
+                updated = copy.deepcopy(cfg)
+                updated.setdefault("llm", {})["prompt_rules"] = rules
+                save_config(updated)
+                flash("Prompt rule removed", "success")
+                event_logger.log("config", f"Removed prompt rule", level="info")
+
         elif action == "save_profile_manual":
             try:
                 index = int(request.form.get("index", -1))
