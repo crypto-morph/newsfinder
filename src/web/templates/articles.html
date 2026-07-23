@@ -3,6 +3,23 @@
 {% set page_eyebrow = "Analysis" %}
 {% set page_subtitle = "All analysed articles scored for relevance and market impact" %}
 
+{% block extra_head %}
+<style>
+.score-filter{display:flex;gap:32px;align-items:flex-end;background:#fff;
+  border-radius:0 0 16px 0;box-shadow:0 1px 4px rgba(27,54,93,.08);
+  padding:22px 26px;margin-bottom:20px;font-family:Montserrat,sans-serif;}
+.sf-axis{flex:1;max-width:320px;}
+.sf-head{display:flex;justify-content:space-between;font-size:13px;font-weight:600;
+  color:#1b365d;margin-bottom:8px;}
+.sf-head b{color:#009fdf;font-size:15px;}
+.sf-hist{display:flex;gap:3px;height:34px;align-items:flex-end;margin-bottom:8px;}
+.sf-hist span{flex:1;border-radius:2px 2px 0 0;background:#d6d2c4;transition:background .1s;}
+.sf-hist span.on{background:#009fdf;}
+.score-filter input[type=range]{width:100%;accent-color:#009fdf;}
+.sf-count{font-size:13px;font-weight:600;color:#009fdf;white-space:nowrap;padding-bottom:6px;}
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Tab filters -->
 <div style="display:flex; gap:8px; margin-bottom:22px;">
@@ -14,9 +31,24 @@
   </div>
 </div>
 
+<!-- Score floor filter -->
+<div class="score-filter">
+  <div class="sf-axis">
+    <div class="sf-head"><span>Relevance</span><span>≥ <b id="sf-rel-val">0</b></span></div>
+    <div class="sf-hist" id="sf-rel-hist"></div>
+    <input type="range" min="0" max="10" value="0" id="sf-rel">
+  </div>
+  <div class="sf-axis">
+    <div class="sf-head"><span>Impact</span><span>≥ <b id="sf-imp-val">0</b></span></div>
+    <div class="sf-hist" id="sf-imp-hist"></div>
+    <input type="range" min="0" max="10" value="0" id="sf-imp">
+  </div>
+  <div class="sf-count"><b id="sf-count">–</b> shown</div>
+</div>
+
 <!-- Article cards -->
 {% for article in processed %}
-<div class="card" style="padding:22px 24px; margin-bottom:14px; display:grid; grid-template-columns:1fr 190px; gap:24px;">
+<div class="card article-card" data-rel="{{ article.relevance_score | default(0) | int }}" data-imp="{{ article.impact_score | default(0) | int }}" style="padding:22px 24px; margin-bottom:14px; display:grid; grid-template-columns:1fr 190px; gap:24px;">
   <div style="min-width:0;">
     <a href="{{ article.url | default('#') }}" target="_blank" style="font-size:16px; font-weight:600; color:#1b365d; line-height:1.35;">{{ article.title }}</a>
     <div style="font-size:12px; color:#8a93a3; margin:6px 0 12px; font-weight:500;">{{ article.source | default('') }} · {{ article.published_date | default(article.published | default('')) }}</div>
@@ -57,4 +89,50 @@
   <p style="color:#8a93a3; font-size:14px; margin-top:12px;">No articles yet. Run the pipeline to start analysing.</p>
 </div>
 {% endfor %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function(){
+  const rows = [...document.querySelectorAll('[data-rel]')];
+  const relEl=sf('rel'), impEl=sf('imp');
+
+  function sf(k){return {slider:document.getElementById('sf-'+k),
+    val:document.getElementById('sf-'+k+'-val'),hist:document.getElementById('sf-'+k+'-hist')};}
+
+  function buildHist(el,key,floor){
+    const c=Array(11).fill(0); rows.forEach(r=>c[+r.dataset[key]]++);
+    const max=Math.max(1,...c);
+    el.innerHTML=c.map((n,i)=>`<span class="${i>=floor?'on':''}"
+      style="height:${8+n/max*26}px"></span>`).join('');
+  }
+
+  function apply(){
+    const rf=+relEl.slider.value, imf=+impEl.slider.value;
+    relEl.val.textContent=rf; impEl.val.textContent=imf;
+    let shown=0;
+    rows.forEach(r=>{const ok=+r.dataset.rel>=rf && +r.dataset.imp>=imf;
+      r.style.display=ok?'':'none'; if(ok)shown++;});
+    buildHist(relEl.hist,'rel',rf); buildHist(impEl.hist,'imp',imf);
+    document.getElementById('sf-count').textContent=shown;
+  }
+
+  // Read initial values from URL params if present
+  const params = new URLSearchParams(window.location.search);
+  if(params.has('rel')) relEl.slider.value = params.get('rel');
+  if(params.has('imp')) impEl.slider.value = params.get('imp');
+
+  relEl.slider.addEventListener('input', function(){apply(); updateURL();});
+  impEl.slider.addEventListener('input', function(){apply(); updateURL();});
+
+  function updateURL(){
+    const u = new URL(window.location);
+    u.searchParams.set('rel', relEl.slider.value);
+    u.searchParams.set('imp', impEl.slider.value);
+    history.replaceState(null, '', u);
+  }
+
+  apply();
+})();
+</script>
 {% endblock %}
