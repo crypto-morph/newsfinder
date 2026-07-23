@@ -1,8 +1,6 @@
 # News Finder
 
-A competitive intelligence dashboard that aggregates, filters, and analyzes news articles for specific company goals. It uses **Ollama** for local LLM inference and **ChromaDB** for vector search (RAG).
-
-![Dashboard Preview](https://via.placeholder.com/800x400?text=News+Finder+Dashboard)
+A competitive intelligence dashboard that aggregates, filters, and analyzes news articles for specific company goals. It uses **Ollama** (or **Kiro CLI**) for LLM inference and **ChromaDB** for vector search (RAG).
 
 ## Features
 
@@ -11,16 +9,18 @@ A competitive intelligence dashboard that aggregates, filters, and analyzes news
     - Scrapes full article content from RSS feeds.
     - **LLM Analysis**: Summarizes articles and scores them for "Relevance" and "Impact".
     - **Keyword Filtering**: Pre-filters noise based on broad keywords.
+- **LLM Verification**: Audits local model scores against a remote provider, with prompt optimization tooling.
 - **Archive Import**: Backfill historical data from BBC Archive sitemaps by selecting a specific month.
 - **Context Profiling**: Automatically scrapes company websites to generate "Strategic Context" (Goals, Products, Market Position) for the AI.
 - **RAG Explorer**: Semantic search across your news database.
-- **Modern UI**: Clean Flask + Bulma dashboard with real-time pipeline progress.
+- **Modern UI**: Custom Flask dashboard with real-time pipeline progress via System Console.
 
 ## Prerequisites
 
 - **Python 3.10+**
-- **Ollama** installed and running locally.
-    - Models required: `llama3.1:8b` (inference) and `nomic-embed-text` or `all-minilm` (embedding).
+- **[uv](https://docs.astral.sh/uv/)** for dependency management and running scripts.
+- **Ollama** installed and running locally (for embeddings, and optionally for inference).
+    - Models required: `nomic-embed-text` (embedding) and optionally `llama3.1:8b` (inference if not using Kiro provider).
 
 ## Quick Start
 
@@ -28,14 +28,11 @@ A competitive intelligence dashboard that aggregates, filters, and analyzes news
     ```bash
     git clone <repo-url>
     cd newsfinder
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+    uv sync
     ```
 
-2.  **Pull AI Models**:
+2.  **Pull Embedding Model**:
     ```bash
-    ollama pull llama3.1:8b
     ollama pull nomic-embed-text
     ```
 
@@ -53,7 +50,7 @@ A competitive intelligence dashboard that aggregates, filters, and analyzes news
     - Click **"Generate with AI"** to create a starting list of filtering keywords.
 
 5.  **Ingest News**:
-    - **Real-time**: Go to **Dashboard** and click **"Run Pipeline"**.
+    - **Real-time**: Go to **Dashboard** and click **"Run Pipeline"** (or use the System Console).
     - **Historical**: Go to **Import** (`/import`), select a month, and click **"Start Backfill"**.
 
 ## Configuration (`config.yaml`)
@@ -74,19 +71,22 @@ feeds:
 pipeline:
   keywords: [ "health", "wellness", "diagnostics" ]
   alert_threshold:
-    relevance: 7
-    impact: 7
+    relevance: 6
+    impact: 5
 
 llm:
-  model: llama3.1:8b
-  embedding_model: nomic-embed-text
+  provider: kiro          # Options: "ollama" or "kiro"
+  base_url: http://localhost:11434
+  model: null             # null = use provider default
+  embedding_model: nomic-embed-text:latest
+  effort: low             # ACP effort level: low, medium, high
+  prompt_rules: []        # Custom rules for AI analysis
 ```
 
 ## Directory Structure
 
 ```
 /newsfinder
-  /venv/            # IGNORED
   /src/
     /aggregator/    # RSS scraper & Sitemap backfiller
     /analysis/      # LLM client & Verification logic
@@ -98,22 +98,23 @@ llm:
     main.py         # Entry point / Scheduler
   /data/
     /archive/       # Parquet monthly archives
+  /scripts/         # CLI utilities
   config.yaml       # Configuration
-  requirements.txt
+  pyproject.toml    # Dependencies (uv)
 ```
 
 ## CLI Tools
 
-- `./newsctl start|stop|restart`: Manage the web server process.
-- `scripts/backfill_sitemaps.py`: Standalone script for command-line backfilling (alternative to UI).
-- `scripts/warm_sitemap_cache.py`: Pre-builds the sitemap index cache for faster imports.
+- `./newsctl start|stop|restart|status`: Manage the web server process.
+- `./newsctl pipeline`: Run the ingestion pipeline from the command line.
+- `./newsctl profile`: Refresh all company context profiles.
+- `./newsctl import <args>`: Command-line backfilling (alternative to UI).
 
 ## Development
 
 To run in debug mode:
 ```bash
-source venv/bin/activate
-python src/main.py
+uv run python src/main.py
 ```
 
 ## License
