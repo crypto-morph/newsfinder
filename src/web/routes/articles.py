@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from src.web.utils import current_config, get_db, event_logger, build_ollama
 from src.archive_manager import ArchiveManager
-from src.analysis.verification_service import VerificationService
 from src.history import HistoryManager
 from src.pipeline import IngestionPipeline
 from src.services.tagging import generate_tag_rationale
@@ -17,12 +16,6 @@ def articles_view():
     # Load cached articles from Parquet archive
     archive_mgr = ArchiveManager()
     cached_articles = archive_mgr.get_recent_articles(limit=100)
-    
-    # Load verifications to merge
-    service = VerificationService(cfg)
-    recent_verifications = service.get_recent_verifications(limit=500)
-    # Create map by URL
-    ver_map = {v.get("article_url"): v for v in recent_verifications}
     
     # Load History
     history_mgr = HistoryManager()
@@ -40,10 +33,6 @@ def articles_view():
         # Fix tags (stored as comma-string in DB)
         if isinstance(a.get("topic_tags"), str):
             a["topic_tags"] = [t.strip() for t in a["topic_tags"].split(",") if t.strip()]
-        
-        # Attach verification
-        if a.get("url") in ver_map:
-            a["verification"] = ver_map[a["url"]]
         
         # Attach History
         if a.get("id") in history_map:

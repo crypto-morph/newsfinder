@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from typing import Dict, List
 
 from src.analysis.llm_client import LLMClient
-from src.analysis.verification_service import VerificationService
 from src.aggregator.rss_scraper import RSSNewsAggregator
 from src.database.chroma_client import NewsDatabase
 from src.settings import load_config
@@ -36,7 +35,6 @@ class IngestionPipeline:
             embedding_model=llm_config.get("embedding_model", "nomic-embed-text"),
             effort=llm_config.get("effort", "low"),
         )
-        self.verification_service = VerificationService(self.config)
         chroma_dir = self.config["storage"]["chroma_dir"]
         self.db = NewsDatabase(persist_directory=chroma_dir)
         self.history_manager = HistoryManager()
@@ -103,13 +101,6 @@ class IngestionPipeline:
         company_context = self._load_company_context()
         analysis = self.llm_client.analyze_article(
             content_for_analysis, context=company_context
-        )
-        
-        # 3b. LLM Verification (OpenRouter)
-        self.verification_service.verify(
-            article=article,
-            local_result=analysis,
-            context=company_context
         )
         
         # 4. Topic Extraction
