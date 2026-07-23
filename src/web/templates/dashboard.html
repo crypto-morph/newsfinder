@@ -77,9 +77,9 @@
     <section style="background:#1b365d; color:#fff; border-radius:0 0 14px 0; padding:24px; position:relative; overflow:hidden;">
       <svg width="120" height="140" viewBox="0 0 30 36" style="position:absolute; right:-24px; top:-14px; opacity:0.09;"><path d="M15 1L28 6v11c0 8.5-5.6 14.7-13 18C7.6 31.7 2 25.5 2 17V6L15 1z" fill="#fff"/></svg>
       <div style="font-size:11px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:#9bd3dd;">Company context</div>
-      <div style="font-size:22px; font-weight:600; margin-top:10px;">{{ nf_config.companies[0].name | default('Bluecrest Wellness') }}</div>
+      <div style="font-size:22px; font-weight:600; margin-top:10px;">{{ (nf_config.companies[0].name if nf_config is defined and nf_config.companies) | default('Bluecrest Wellness') }}</div>
       <p style="font-size:13px; font-weight:300; line-height:1.55; color:#cfe3ea; margin:12px 0 0;">
-        Primary profile · Monitoring {{ nf_config.companies | length }} companies across {{ nf_config.feeds | length }} feeds.
+        Primary profile · Monitoring {{ (nf_config.companies | length if nf_config is defined) | default(3) }} companies across {{ (nf_config.feeds | length if nf_config is defined) | default(10) }} feeds.
       </p>
       <a href="{{ url_for('config.config_view') }}" style="display:inline-flex; align-items:center; gap:6px; margin-top:18px; font-size:12.5px; font-weight:600; color:#00aec7;">Edit profile <i class="mdi mdi-arrow-right"></i></a>
     </section>
