@@ -6,7 +6,7 @@ import logging
 from typing import List, Dict, Any
 import json
 
-from .acp_client import ACPClient
+from .acp_client import KiroCLIClient
 
 logger = logging.getLogger(__name__)
 
@@ -41,43 +41,23 @@ class KiroClient:
         self.embedding_model = embedding_model
         self.ollama_url = kwargs.get("base_url", "http://localhost:11434")
 
-        # Build system prompt for structured analysis
-        system_prompt = (
-            "You are a business intelligence analyst API. "
-            "When asked to return JSON, respond with ONLY valid JSON — "
-            "no markdown, no explanation, no code fences. "
-            "When asked for text, respond concisely."
-        )
-
-        self._acp = ACPClient(
-            model=model,
+        self._cli = KiroCLIClient(
             effort=effort,
-            system_prompt=system_prompt,
+            agent="analyzer",
+            model=model,
         )
 
     def check_connection(self) -> bool:
-        """Check if kiro-cli acp can be started."""
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["kiro-cli", "--version"], capture_output=True, timeout=5
-            )
-            return result.returncode == 0
-        except Exception:
-            return False
+        """Check if kiro-cli is available."""
+        return self._cli.check_connection()
 
     def warmup(self) -> bool:
-        """Start the ACP session (lazy — called on first use if not already up)."""
-        try:
-            self._acp.start()
-            return True
-        except Exception as e:
-            logger.error("ACP warmup failed: %s", e)
-            return False
+        """No persistent process to warm up."""
+        return self.check_connection()
 
     def shutdown(self) -> None:
-        """Cleanly stop the ACP subprocess."""
-        self._acp.stop()
+        """No persistent process to stop."""
+        pass
 
     def generate_embedding(self, text: str) -> List[float]:
         """Use Ollama for embeddings (ACP/Kiro doesn't support this)."""
@@ -94,22 +74,12 @@ class KiroClient:
             return []
 
     def generate_json(self, prompt: str, timeout: int = 300) -> Dict[str, Any]:
-        """Send a prompt expecting a JSON response via ACP."""
-        try:
-            self._acp._ensure_alive()
-            return self._acp.prompt_json(prompt, timeout=timeout)
-        except Exception as exc:
-            logger.error("ACP JSON call failed: %s", exc)
-            return {}
+        """Send a prompt expecting a JSON response via kiro-cli."""
+        return self._cli.prompt_json(prompt, timeout=timeout)
 
     def generate_text(self, prompt: str, timeout: int = 300) -> str:
-        """Send a prompt for text generation via ACP."""
-        try:
-            self._acp._ensure_alive()
-            return self._acp.prompt(prompt, timeout=timeout)
-        except Exception as exc:
-            logger.error("ACP text call failed: %s", exc)
-            return ""
+        """Send a prompt for text generation via kiro-cli."""
+        return self._cli.prompt(prompt, timeout=timeout)
 
     def extract_topics(self, text: str, max_topics: int = 5) -> List[str]:
         """Extract concise topic tags for an article."""
