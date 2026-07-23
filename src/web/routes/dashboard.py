@@ -96,6 +96,27 @@ def dashboard():
         available_goals=goals,
     )
 
+@dashboard_bp.route("/run-pipeline", methods=["POST"])
+def run_pipeline():
+    import threading
+    cfg = current_config()
+    try:
+        from src.pipeline import IngestionPipeline
+        pipeline = IngestionPipeline(cfg["config_path"])
+
+        def _run():
+            try:
+                pipeline.run()
+            except Exception as e:
+                event_logger.log("pipeline", f"Pipeline error: {e}", level="error")
+
+        thread = threading.Thread(target=_run, daemon=True)
+        thread.start()
+        flash("Pipeline started in background", "success")
+    except Exception as e:
+        flash(f"Failed to start pipeline: {e}", "error")
+    return redirect(url_for("dashboard.dashboard"))
+
 @dashboard_bp.route("/tag-feedback", methods=["POST"])
 def tag_feedback():
     cfg = current_config()

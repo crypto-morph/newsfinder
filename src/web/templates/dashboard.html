@@ -4,7 +4,7 @@
 {% set page_subtitle = "Real-time competitive intelligence for Bluecrest Wellness" %}
 
 {% block header_actions %}
-<form method="post" action="{{ url_for('api.api_pipeline_fetch') }}" style="margin:0;">
+<form method="post" action="{{ url_for('dashboard.run_pipeline') }}" style="margin:0;">
   <button type="submit" class="btn btn-primary">
     <i class="mdi mdi-play-circle"></i> Run pipeline
   </button>
