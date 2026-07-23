@@ -6,20 +6,20 @@
 {% block content %}
 <!-- Tab filters -->
 <div style="display:flex; gap:8px; margin-bottom:22px;">
-  <a href="{{ url_for('articles.articles_view', tab='processed') }}" style="background:{% if tab == 'processed' %}#1b365d; color:#fff{% else %}#fff; color:#5a6b82{% endif %}; padding:9px 18px; border-radius:0 0 8px 0; font-size:13px; font-weight:{% if tab == 'processed' %}600{% else %}500{% endif %}; display:flex; align-items:center; gap:8px; box-shadow:0 1px 2px rgba(27,54,93,0.06);">
-    <i class="mdi mdi-check-circle-outline"></i> Processed ({{ processed_count | default(0) }})
-  </a>
-  <a href="{{ url_for('articles.articles_view', tab='skipped') }}" style="background:{% if tab == 'skipped' %}#1b365d; color:#fff{% else %}#fff; color:#5a6b82{% endif %}; padding:9px 18px; border-radius:0 0 8px 0; font-size:13px; font-weight:{% if tab == 'skipped' %}600{% else %}500{% endif %}; display:flex; align-items:center; gap:8px; box-shadow:0 1px 2px rgba(27,54,93,0.06);">
-    <i class="mdi mdi-file-hidden"></i> Skipped ({{ skipped_count | default(0) }})
-  </a>
+  <div style="background:#1b365d; color:#fff; padding:9px 18px; border-radius:0 0 8px 0; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px;">
+    <i class="mdi mdi-check-circle-outline"></i> Processed ({{ processed | length }})
+  </div>
+  <div style="background:#fff; color:#5a6b82; padding:9px 18px; border-radius:0 0 8px 0; font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px; box-shadow:0 1px 2px rgba(27,54,93,0.06);">
+    <i class="mdi mdi-file-hidden"></i> Skipped ({{ skipped | length }})
+  </div>
 </div>
 
 <!-- Article cards -->
-{% for article in articles %}
+{% for article in processed %}
 <div class="card" style="padding:22px 24px; margin-bottom:14px; display:grid; grid-template-columns:1fr 190px; gap:24px;">
   <div style="min-width:0;">
-    <a href="{{ article.url }}" target="_blank" style="font-size:16px; font-weight:600; color:#1b365d; line-height:1.35;">{{ article.title }}</a>
-    <div style="font-size:12px; color:#8a93a3; margin:6px 0 12px; font-weight:500;">{{ article.source }} · {{ article.published_date | default(article.published) | default('') }}</div>
+    <a href="{{ article.url | default('#') }}" target="_blank" style="font-size:16px; font-weight:600; color:#1b365d; line-height:1.35;">{{ article.title }}</a>
+    <div style="font-size:12px; color:#8a93a3; margin:6px 0 12px; font-weight:500;">{{ article.source | default('') }} · {{ article.published_date | default(article.published | default('')) }}</div>
     {% if article.summary_text %}
     <p style="font-size:13.5px; line-height:1.55; color:#41505f; margin:0 0 12px;">{{ article.summary_text[:200] }}{% if article.summary_text | length > 200 %}…{% endif %}</p>
     {% endif %}
@@ -30,7 +30,7 @@
     {% endif %}
     {% if article.topic_tags %}
     <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:12px;">
-      {% for tag in article.topic_tags[:5] %}
+      {% for tag in article.topic_tags[:5] if tag %}
       <span class="tag">{{ tag }}</span>
       {% endfor %}
     </div>
