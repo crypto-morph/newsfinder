@@ -30,25 +30,42 @@ pipeline:
   articles_per_feed: 50
   keywords:
   - blood test
+  - blood
   - bluecrest
+  - bupa
+  - cancer screening
+  - cardiovascular
+  - cholesterol
   - corporate wellness
+  - diabetes
+  - diagnosis
   - diagnostics
+  - early detection
   - employee health
-  - health and wellness
+  - fitness
+  - health check
   - health screening
+  - health tech
   - healthcare
-  - healthy lifestyle
+  - heart disease
+  - mental health
+  - nhs
+  - nuffield
+  - obesity
   - occupational health
-  - preventive care
-  - preventive health
-  - screening services
+  - preventive
+  - private healthcare
+  - prostate
+  - randox
+  - screening
   - telemedicine
+  - vaccine
+  - wearable
   - wellness
-  - wellness programs
   - workplace wellness
   alert_threshold:
-    relevance: 7
-    impact: 7
+    relevance: 6
+    impact: 5
 llm:
   provider: kiro  # Options: "ollama" or "kiro"
   base_url: http://localhost:11434  # Used for embeddings (Ollama) even with kiro provider

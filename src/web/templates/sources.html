@@ -11,17 +11,19 @@
       </header>
       <div class="card-content">
         {% if feeds %}
-        <div class="tabs is-boxed is-fullwidth">
-          <ul>
+        <aside class="menu mb-4">
+          <p class="menu-label">Feeds</p>
+          <ul class="menu-list">
             {% for feed in feeds %}
-            <li class="{% if loop.index0 == selected_index %}is-active{% endif %}">
-              <a href="{{ url_for('config.sources', index=loop.index0) }}">
+            <li>
+              <a href="{{ url_for('config.sources', index=loop.index0) }}"
+                 class="{% if loop.index0 == selected_index %}is-active{% endif %}">
                 {{ feed.name or ('Source ' ~ loop.index) }}
               </a>
             </li>
             {% endfor %}
           </ul>
-        </div>
+        </aside>
         {% else %}
         <p>No sources added yet.</p>
         {% endif %}
