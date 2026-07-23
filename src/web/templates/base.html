@@ -134,5 +134,137 @@
   </main>
 </div>
 {% block extra_scripts %}{% endblock %}
+
+<!-- System Console -->
+<div id="system-console" style="position:fixed; bottom:0; left:250px; right:0; background:#fff; border-top:2px solid #d6d2c4; box-shadow:0 -2px 10px rgba(27,54,93,0.08); z-index:1000; transition:transform 0.3s ease; transform:translateY(calc(100% - 38px));">
+  <div onclick="SystemConsole.toggle()" style="height:38px; background:#fbfaf6; padding:0 20px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; border-bottom:1px solid #eceae1;">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <i class="mdi mdi-console" style="color:#41748d;"></i>
+      <span style="font-size:12px; font-weight:600; color:#1b365d;">System Console</span>
+      <span id="console-status" style="font-size:11px; font-weight:600; color:#009fdf; display:none;"></span>
+    </div>
+    <i class="mdi mdi-chevron-up" id="console-chevron" style="color:#8a93a3;"></i>
+  </div>
+  <div style="height:220px; padding:12px 20px; display:flex; flex-direction:column;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+      <button id="console-run-btn" onclick="event.stopPropagation(); SystemConsole.runPipeline()" class="btn btn-primary" style="padding:7px 14px; font-size:12px;">
+        <i class="mdi mdi-play"></i> Run Pipeline
+      </button>
+      <button onclick="event.stopPropagation(); SystemConsole.clear()" style="background:none; border:1px solid #dfe4e8; border-radius:6px; padding:7px 12px; font-size:12px; font-weight:500; color:#5a6b82; cursor:pointer;">Clear</button>
+      <label style="margin-left:auto; font-size:11px; color:#8a93a3; display:flex; align-items:center; gap:5px;">
+        <input type="checkbox" id="auto-scroll" checked> Auto-scroll
+      </label>
+    </div>
+    <progress id="console-progress" value="0" max="100" style="width:100%; height:6px; margin-bottom:8px; display:none; accent-color:#009fdf;"></progress>
+    <div id="console-logs" style="flex:1; overflow-y:auto; font-family:monospace; font-size:11.5px; background:#1b365d; color:#cfe3ea; padding:10px 12px; border-radius:0 0 8px 0; line-height:1.6;">
+      <p style="color:#5a6b82;">System ready.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const SystemConsole = {
+  isOpen: false,
+  isRunning: false,
+  el: document.getElementById('system-console'),
+  logsEl: document.getElementById('console-logs'),
+  progressEl: document.getElementById('console-progress'),
+  btnEl: document.getElementById('console-run-btn'),
+  statusEl: document.getElementById('console-status'),
+
+  toggle() {
+    this.isOpen = !this.isOpen;
+    this.el.style.transform = this.isOpen ? 'translateY(0)' : 'translateY(calc(100% - 38px))';
+    document.getElementById('console-chevron').className = 'mdi ' + (this.isOpen ? 'mdi-chevron-down' : 'mdi-chevron-up');
+  },
+
+  open() { if (!this.isOpen) this.toggle(); },
+
+  clear() { this.logsEl.innerHTML = ''; this.log('Logs cleared.', 'info'); },
+
+  log(msg, type='info') {
+    const colors = {info:'#cfe3ea', success:'#2dc84d', warning:'#ffa300', error:'#e10600', pipeline:'#009fdf'};
+    const time = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const p = document.createElement('p');
+    p.innerHTML = `<span style="color:#5a6b82">${time}</span> <span style="color:${colors[type]||colors.info}">${msg}</span>`;
+    this.logsEl.appendChild(p);
+    if (document.getElementById('auto-scroll').checked) this.logsEl.scrollTop = this.logsEl.scrollHeight;
+  },
+
+  async runPipeline() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    this.open();
+    this.btnEl.disabled = true;
+    this.statusEl.style.display = 'inline';
+    this.statusEl.textContent = 'Fetching...';
+    this.progressEl.style.display = 'block';
+    this.progressEl.value = 0;
+
+    try {
+      // 1. Fetch articles
+      this.log('Starting pipeline fetch...', 'pipeline');
+      const fetchResp = await fetch("{{ url_for('api.api_pipeline_fetch') }}", {method:'POST'});
+      const fetchData = await fetchResp.json();
+
+      if (fetchData.status === 'error') throw new Error(fetchData.message);
+      const articles = fetchData.articles || [];
+      this.log(`Fetched ${articles.length} articles`, 'success');
+
+      if (articles.length > 0) {
+        let processed = 0;
+        for (const article of articles) {
+          this.statusEl.textContent = `Processing ${processed+1}/${articles.length}`;
+          this.log(`Analyzing: ${(article.title||'').substring(0,55)}...`, 'info');
+
+          try {
+            const pResp = await fetch("{{ url_for('api.api_pipeline_process') }}", {
+              method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(article)
+            });
+            const res = await pResp.json();
+            if (res.status === 'imported') {
+              this.log(`✓ Imported (rel:${res.relevance_score||'?'} imp:${res.impact_score||'?'}): ${article.title}`, 'success');
+              if (res.alert) this.log('⚠ ALERT TRIGGERED', 'error');
+            } else if (res.status === 'skipped') {
+              this.log(`– Skipped: ${(article.title||'').substring(0,40)} (${res.reason||''})`, 'warning');
+            }
+          } catch(err) {
+            this.log(`✗ Error: ${err.message}`, 'error');
+          }
+          processed++;
+          this.progressEl.value = (processed/articles.length)*100;
+        }
+      }
+
+      this.log('Pipeline complete.', 'success');
+      this.statusEl.textContent = 'Complete';
+      setTimeout(() => location.reload(), 2000);
+
+    } catch(e) {
+      this.log(`Pipeline failed: ${e.message}`, 'error');
+      this.statusEl.textContent = 'Error';
+    } finally {
+      this.isRunning = false;
+      this.btnEl.disabled = false;
+      setTimeout(() => { this.progressEl.style.display='none'; this.statusEl.style.display='none'; }, 3000);
+    }
+  },
+
+  async loadHistory() {
+    try {
+      const resp = await fetch('/api/events?limit=20&offset=0');
+      const events = await resp.json();
+      if (events && events.length) {
+        events.slice().reverse().forEach(e => {
+          this.log(e.message, e.level === 'pipeline' ? 'pipeline' : e.level);
+        });
+      }
+    } catch(e) {}
+  }
+};
+
+// Load recent history on page load
+SystemConsole.loadHistory();
+</script>
 </body>
 </html>
