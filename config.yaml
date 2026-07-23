@@ -37,9 +37,10 @@ pipeline:
     impact: 7
 llm:
   provider: kiro  # Options: "ollama" or "kiro"
-  base_url: http://localhost:11434
-  model: llama3.2:3b
+  base_url: http://localhost:11434  # Used for embeddings (Ollama) even with kiro provider
+  model: null  # null = let kiro-cli use its default model
   embedding_model: nomic-embed-text
+  effort: low  # ACP effort level: low, medium, high (lower = faster/cheaper)
   prompt_rules: []  # Custom rules/considerations for the AI prompt
 
 verification:

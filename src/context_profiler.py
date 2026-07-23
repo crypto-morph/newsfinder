@@ -35,6 +35,7 @@ class CompanyContextProfiler:
             base_url=llm_cfg.get("base_url", "http://localhost:11434"),
             model=llm_cfg.get("model"),
             embedding_model=llm_cfg.get("embedding_model", "nomic-embed-text"),
+            effort=llm_cfg.get("effort", "low"),
         )
 
     def refresh_all_contexts(self) -> List[CompanyContext]:

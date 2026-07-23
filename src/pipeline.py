@@ -34,6 +34,7 @@ class IngestionPipeline:
             base_url=llm_config.get("base_url", "http://localhost:11434"),
             model=llm_config.get("model"),
             embedding_model=llm_config.get("embedding_model", "nomic-embed-text"),
+            effort=llm_config.get("effort", "low"),
         )
         self.verification_service = VerificationService(self.config)
         chroma_dir = self.config["storage"]["chroma_dir"]

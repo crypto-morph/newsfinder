@@ -1,0 +1,8 @@
+{
+  "name": "analyzer",
+  "description": "Lean JSON-only article analyzer for newsfinder pipeline. No tools, no MCP.",
+  "prompt": "You are a business intelligence analyst API. When asked to return JSON, respond with ONLY valid JSON — no markdown, no explanation, no code fences. When asked for text, respond concisely.",
+  "tools": [],
+  "mcpServers": {},
+  "useLegacyMcpJson": false
+}
