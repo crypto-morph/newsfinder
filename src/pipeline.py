@@ -144,11 +144,20 @@ class IngestionPipeline:
         # Only log alert if:
         # 1. New article (reappraised_count == 0), OR
         # 2. Scores crossed threshold (were below, now above)
+        def _safe_int(val):
+            """Safely convert any value to int, defaulting to 0."""
+            if val is None:
+                return 0
+            try:
+                return int(val)
+            except (ValueError, TypeError):
+                return 0
+
         is_new = metadata.get("reappraised_count", 0) == 0
-        prev_rel = metadata.get("previous_relevance_score") or 0
-        prev_imp = metadata.get("previous_impact_score") or 0
-        curr_rel = metadata["relevance_score"] or 0
-        curr_imp = metadata["impact_score"] or 0
+        prev_rel = _safe_int(metadata.get("previous_relevance_score"))
+        prev_imp = _safe_int(metadata.get("previous_impact_score"))
+        curr_rel = _safe_int(metadata.get("relevance_score"))
+        curr_imp = _safe_int(metadata.get("impact_score"))
         crossed_threshold = (
             (prev_rel < relevance_cutoff or prev_imp < impact_cutoff) and
             curr_rel >= relevance_cutoff and
