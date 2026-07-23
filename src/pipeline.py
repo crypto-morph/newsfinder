@@ -79,21 +79,30 @@ class IngestionPipeline:
             logger.info("Skipping duplicate article %s", article["link"])
             return result
 
-        # 2. Keyword Filtering
+        # 2. Keyword Filtering (check title AND content)
         keywords = set(
             kw.lower() for kw in self.config["pipeline"].get("keywords", [])
         )
+        title_lower = article.get("title", "").lower()
         content_lower = article["content"].lower()
-        if not force and keywords and not any(keyword in content_lower for keyword in keywords):
+        searchable = f"{title_lower} {content_lower}"
+        if not force and keywords and not any(keyword in searchable for keyword in keywords):
             result["status"] = "skipped"
             result["reason"] = "Filtered (no matching keywords)"
             logger.debug("Skipping article %s due to keyword filter", article.get("title"))
             return result
 
+        # 2b. Content quality check — if scraped content is garbage, use title
+        content_for_analysis = article["content"]
+        garbage_markers = ["we use cookies", "accept all", "javascript is not available", "enable javascript"]
+        if len(content_for_analysis) < 200 or any(m in content_lower[:200] for m in garbage_markers):
+            content_for_analysis = f"Title: {article.get('title', '')}. Source: {article.get('source', '')}."
+            logger.info("Using title-only analysis for %s (content unusable)", article.get("title", "")[:40])
+
         # 3. LLM Analysis
         company_context = self._load_company_context()
         analysis = self.llm_client.analyze_article(
-            article["content"], context=company_context
+            content_for_analysis, context=company_context
         )
         
         # 3b. LLM Verification (OpenRouter)
