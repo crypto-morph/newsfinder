@@ -6,14 +6,28 @@ companies:
 - name: Qured
   url: https://www.qured.com/
 feeds:
-- name: BBC World
-  url: https://feeds.bbci.co.uk/news/world/rss.xml
 - name: BBC Health
   url: https://feeds.bbci.co.uk/news/health/rss.xml
+- name: BBC Business
+  url: https://feeds.bbci.co.uk/news/business/rss.xml
+- name: BBC World
+  url: https://feeds.bbci.co.uk/news/world/rss.xml
+- name: BBC Science
+  url: https://feeds.bbci.co.uk/news/science_and_environment/rss.xml
+- name: BBC UK
+  url: https://feeds.bbci.co.uk/news/uk/rss.xml
+- name: Guardian Health
+  url: https://www.theguardian.com/society/health/rss
+- name: Guardian Business
+  url: https://www.theguardian.com/uk/business/rss
 - name: Guardian Rss
   url: https://www.theguardian.com/uk/rss
+- name: Reuters Health
+  url: https://news.google.com/rss/search?q=health+screening+UK&hl=en-GB&gl=GB
+- name: Google Wellness
+  url: https://news.google.com/rss/search?q=corporate+wellness+UK&hl=en-GB&gl=GB
 pipeline:
-  articles_per_feed: 15
+  articles_per_feed: 50
   keywords:
   - blood test
   - bluecrest
@@ -39,7 +53,7 @@ llm:
   provider: kiro  # Options: "ollama" or "kiro"
   base_url: http://localhost:11434  # Used for embeddings (Ollama) even with kiro provider
   model: null  # null = let kiro-cli use its default model
-  embedding_model: nomic-embed-text
+  embedding_model: nomic-embed-text:latest
   effort: low  # ACP effort level: low, medium, high (lower = faster/cheaper)
   prompt_rules: []  # Custom rules/considerations for the AI prompt
 

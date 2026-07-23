@@ -116,9 +116,9 @@ class IngestionPipeline:
             "title": article["title"],
             "published_date": article["published"],
             "source": article["source"],
-            "relevance_score": analysis.get("relevance_score", 0),
+            "relevance_score": int(analysis.get("relevance_score") or 0),
             "relevance_reasoning": analysis.get("relevance_reasoning", ""),
-            "impact_score": analysis.get("impact_score", 0),
+            "impact_score": int(analysis.get("impact_score") or 0),
             "summary_text": analysis.get("summary", ""),
             "key_entities": analysis.get("key_entities", []),
             "topic_tags": topic_tags,
@@ -145,17 +145,19 @@ class IngestionPipeline:
         # 1. New article (reappraised_count == 0), OR
         # 2. Scores crossed threshold (were below, now above)
         is_new = metadata.get("reappraised_count", 0) == 0
-        prev_rel = metadata.get("previous_relevance_score", 0)
-        prev_imp = metadata.get("previous_impact_score", 0)
+        prev_rel = metadata.get("previous_relevance_score") or 0
+        prev_imp = metadata.get("previous_impact_score") or 0
+        curr_rel = metadata["relevance_score"] or 0
+        curr_imp = metadata["impact_score"] or 0
         crossed_threshold = (
             (prev_rel < relevance_cutoff or prev_imp < impact_cutoff) and
-            metadata["relevance_score"] >= relevance_cutoff and
-            metadata["impact_score"] >= impact_cutoff
+            curr_rel >= relevance_cutoff and
+            curr_imp >= impact_cutoff
         )
 
         if (is_new or crossed_threshold) and (
-            metadata["relevance_score"] >= relevance_cutoff
-            and metadata["impact_score"] >= impact_cutoff
+            curr_rel >= relevance_cutoff
+            and curr_imp >= impact_cutoff
         ):
             self._log_alert(metadata)
             result["alert"] = True
@@ -226,10 +228,10 @@ class IngestionPipeline:
 
     def run(self) -> List[Dict]:
         """Legacy run method for backward compatibility."""
-        # Check Ollama status before starting
+        # Check Ollama status before starting (needed for embeddings even with kiro provider)
         llm_config = self.config.get("llm", {})
         base_url = llm_config.get("base_url", "http://localhost:11434")
-        model = llm_config.get("model", "llama3.2:3b")
+        provider = llm_config.get("provider", "ollama")
         
         logger.info("Checking Ollama status...")
         status = check_ollama_status(base_url)
@@ -243,9 +245,18 @@ class IngestionPipeline:
         
         logger.info(f"✓ Ollama is running ({len(status.get('loaded_models', []))} models loaded)")
         
-        if not ensure_model_available(model, base_url):
-            logger.error(f"❌ Required model '{model}' not available")
-            return []
+        # Only check inference model availability for ollama provider
+        if provider == "ollama":
+            model = llm_config.get("model", "llama3.2:3b")
+            if not ensure_model_available(model, base_url):
+                logger.error(f"❌ Required model '{model}' not available")
+                return []
+        else:
+            # For kiro provider, just check embedding model is available
+            embedding_model = llm_config.get("embedding_model", "nomic-embed-text")
+            if not ensure_model_available(embedding_model, base_url):
+                logger.error(f"❌ Required embedding model '{embedding_model}' not available")
+                return []
         
         articles = self.fetch()
         processed: List[Dict] = []
