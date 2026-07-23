@@ -1,60 +1,44 @@
 {% extends "base.html" %}
 {% set page_title = "RAG Explorer" %}
-{% set page_subtitle = "Ask questions and retrieve semantically similar articles" %}
+{% set page_eyebrow = "Search" %}
+{% set page_subtitle = "Semantic search across your intelligence knowledge base" %}
 
 {% block content %}
-<div class="card">
-  <div class="card-content">
-    <form method="get" action="{{ url_for('explore.explore') }}">
-      <div class="field has-addons">
-        <div class="control is-expanded">
-          <input
-            class="input"
-            type="text"
-            name="q"
-            placeholder="What health trends could impact Bluecrest?"
-            value="{{ query }}"
-          />
-        </div>
-        <div class="control">
-          <button class="button is-primary">Search</button>
-        </div>
-      </div>
-    </form>
-  </div>
+<!-- Search hero -->
+<div style="background:#1b365d; border-radius:0 0 14px 0; padding:30px 32px; margin-bottom:26px; position:relative; overflow:hidden;">
+  <svg width="150" height="180" viewBox="0 0 30 36" style="position:absolute; right:20px; top:-30px; opacity:0.08;"><path d="M15 1L28 6v11c0 8.5-5.6 14.7-13 18C7.6 31.7 2 25.5 2 17V6L15 1z" fill="#fff"/></svg>
+  <div style="font-family:'DM Serif Display',serif; font-size:44px; color:#00aec7; line-height:0.5; height:22px;">"</div>
+  <div style="color:#fff; font-size:18px; font-weight:300; margin:12px 0 20px; max-width:560px;">Ask the knowledge base a question — semantic search across every analysed article.</div>
+  <form method="get" action="{{ url_for('explore.explore') }}" style="display:flex; gap:0; max-width:640px; box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+    <input name="q" value="{{ query | default('') }}" placeholder="What health trends could impact Bluecrest?" style="flex:1; border:none; padding:15px 18px; font-family:inherit; font-size:14px; color:#1b365d; border-radius:0; outline:none;" />
+    <button type="submit" style="background:#009fdf; color:#fff; border:none; padding:0 26px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;">Search</button>
+  </form>
 </div>
 
-<div class="mt-5">
-  {% if results %}
-  <div class="columns is-multiline">
-    {% for item in results %}
-    <div class="column is-half">
-      <div class="card">
-        <div class="card-content">
-          <p class="title is-6">{{ item.metadata.title or 'Untitled' }}</p>
-          <p class="subtitle is-7">{{ item.metadata.source }} · {{ item.metadata.published_date }}</p>
-          <p class="mb-3">{{ item.summary }}</p>
-          <div class="tags">
-            <span class="tag is-link is-light">Relevance {{ item.metadata.relevance_score }}</span>
-            <span class="tag is-warning is-light">Impact {{ item.metadata.impact_score }}</span>
-            {% if item.score is not none %}
-            <span class="tag is-dark is-light">Distance {{ '%.4f'|format(item.score) }}</span>
-            {% endif %}
-          </div>
-          <a class="button is-small is-link is-light" href="{{ item.metadata.url }}" target="_blank">Read article</a>
-        </div>
-      </div>
+{% if results %}
+<div style="font-size:12px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; color:#41748d; margin-bottom:14px;">{{ results | length }} results · ranked by similarity</div>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+  {% for item in results %}
+  <div class="card" style="padding:20px 22px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+      <a href="{{ item.metadata.url | default('#') }}" target="_blank" style="font-size:15px; font-weight:600; color:#1b365d; line-height:1.35;">{{ item.metadata.title | default('Untitled') }}</a>
+      {% if item.distance is defined %}
+      <span class="badge badge-blue" style="flex:0 0 auto;">{{ "%.2f" | format(item.distance) }}</span>
+      {% endif %}
     </div>
-    {% endfor %}
+    <div style="font-size:12px; color:#8a93a3; margin:5px 0 10px; font-weight:500;">{{ item.metadata.source | default('') }} · {{ item.metadata.published_date | default('') }}</div>
+    <p style="font-size:13px; line-height:1.55; color:#41505f; margin:0 0 12px;">{{ item.metadata.summary_text | default('') | truncate(150) }}</p>
+    <div style="display:flex; gap:7px;">
+      <span class="badge badge-green badge-pill">R {{ item.metadata.relevance_score | default(0) }}</span>
+      <span class="badge badge-orange badge-pill">I {{ item.metadata.impact_score | default(0) }}</span>
+    </div>
   </div>
-  {% else %}
-  <div class="notification is-light">
-    {% if query %}
-    No matching articles found yet. Try a different query after running the pipeline.
-    {% else %}
-    Enter a query to explore the knowledge base.
-    {% endif %}
-  </div>
-  {% endif %}
+  {% endfor %}
 </div>
+{% elif query %}
+<div class="card" style="padding:40px; text-align:center;">
+  <i class="mdi mdi-magnify" style="font-size:48px; color:#d6d2c4;"></i>
+  <p style="color:#8a93a3; font-size:14px; margin-top:12px;">No results found for "{{ query }}"</p>
+</div>
+{% endif %}
 {% endblock %}

@@ -1,124 +1,65 @@
 {% extends "base.html" %}
 {% set page_title = "Sources" %}
+{% set page_eyebrow = "Feeds" %}
 {% set page_subtitle = "Manage RSS feeds and preview incoming articles" %}
 
 {% block content %}
-<div class="columns">
-  <div class="column is-one-third">
-    <div class="card">
-      <header class="card-header">
-        <p class="card-header-title">Feed List</p>
-      </header>
-      <div class="card-content">
-        {% if feeds %}
-        <aside class="menu mb-4">
-          <p class="menu-label">Feeds</p>
-          <ul class="menu-list">
-            {% for feed in feeds %}
-            <li>
-              <a href="{{ url_for('config.sources', index=loop.index0) }}"
-                 class="{% if loop.index0 == selected_index %}is-active{% endif %}">
-                {{ feed.name or ('Source ' ~ loop.index) }}
-              </a>
-            </li>
-            {% endfor %}
-          </ul>
-        </aside>
-        {% else %}
-        <p>No sources added yet.</p>
-        {% endif %}
+<div style="display:grid; grid-template-columns:320px 1fr; gap:24px;">
+  <!-- Feed list -->
+  <div class="card" style="padding:22px 24px; align-self:start;">
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:#8a93a3; margin-bottom:12px;">Feeds</div>
+    <div style="display:flex; flex-direction:column; gap:2px; margin-bottom:20px;">
+      {% for feed in feeds %}
+      <a href="{{ url_for('config.sources', index=loop.index0) }}" style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:0 0 7px 0; background:{% if loop.index0 == selected_index %}rgba(0,159,223,0.08){% else %}transparent{% endif %}; color:{% if loop.index0 == selected_index %}#1b365d{% else %}#5a6b82{% endif %}; font-weight:{% if loop.index0 == selected_index %}600{% else %}400{% endif %}; font-size:13px;">
+        {{ feed.name or ('Source ' ~ loop.index) }}
+        <span style="width:8px; height:8px; border-radius:999px; background:#2dc84d;"></span>
+      </a>
+      {% endfor %}
+    </div>
 
-        <form method="post" class="mt-4" id="source-form">
-          <input type="hidden" name="index" value="{{ selected_index }}" />
-          <div class="field">
-            <label class="label">Source Name</label>
-            <div class="control">
-              <input class="input" name="feed_name" value="{{ selected_feed.name }}" />
-            </div>
-          </div>
-          <div class="field">
-            <label class="label">Source URL</label>
-            <div class="control">
-              <input class="input" name="feed_url" value="{{ selected_feed.url }}" />
-            </div>
-          </div>
-          <div class="buttons">
-            <button class="button is-link" name="action" value="save_source">Save</button>
-            <button class="button is-light" name="action" value="preview_source" id="preview-button">
-              Preview
-            </button>
-            <button class="button is-danger is-light" name="action" value="remove_source">Remove</button>
-          </div>
-        </form>
+    <div style="border-top:1px solid #eceae1; padding-top:18px;">
+      <form method="post" id="source-form">
+        <input type="hidden" name="index" value="{{ selected_index }}" />
+        <label class="form-label">Source name</label>
+        <input class="form-input" name="feed_name" value="{{ selected_feed.name }}" style="margin-bottom:12px;" />
+        <label class="form-label">Feed URL</label>
+        <input class="form-input" name="feed_url" value="{{ selected_feed.url }}" style="margin-bottom:14px; font-size:12px;" />
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-primary" name="action" value="save_source" style="flex:1; justify-content:center;">Save</button>
+          <button class="btn btn-secondary" name="action" value="preview_source" style="flex:1; justify-content:center;">Preview</button>
+        </div>
+        <button class="btn btn-danger" name="action" value="remove_source" style="width:100%; justify-content:center; margin-top:8px;">Remove</button>
+      </form>
 
-        <hr />
-
-        <form method="post">
-          <input type="hidden" name="index" value="{{ selected_index }}" />
-          <div class="field">
-            <label class="label">Add New Source</label>
-            <div class="control">
-              <input class="input" name="new_name" placeholder="BBC World" />
-            </div>
-          </div>
-          <div class="field">
-            <div class="control">
-              <input class="input" name="new_feed" placeholder="https://example.com/rss.xml" />
-            </div>
-          </div>
-          <button class="button is-primary is-fullwidth" name="action" value="add_source">Add Source</button>
-        </form>
-      </div>
+      <hr style="border:none; border-top:1px solid #eceae1; margin:18px 0;">
+      <form method="post">
+        <input type="hidden" name="index" value="{{ selected_index }}" />
+        <label class="form-label">Add new source</label>
+        <input class="form-input" name="new_name" placeholder="BBC World" style="margin-bottom:8px;" />
+        <input class="form-input" name="new_feed" placeholder="https://example.com/rss.xml" style="margin-bottom:12px;" />
+        <button class="btn btn-primary" name="action" value="add_source" style="width:100%; justify-content:center;">Add source</button>
+      </form>
     </div>
   </div>
 
-  <div class="column">
-    <div class="card">
-      <header class="card-header">
-        <p class="card-header-title">Preview Results</p>
-      </header>
-      <div class="card-content">
-        {% if preview %}
-        <table class="table is-fullwidth">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Source</th>
-              <th>Published</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for article in preview %}
-            <tr>
-              <td>
-                <a href="{{ article.link }}" target="_blank">{{ article.title }}</a>
-                <p class="is-size-7">{{ article.summary }}</p>
-              </td>
-              <td>{{ article.source }}</td>
-              <td>{{ article.published }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% else %}
-        <p>No preview yet. Select a source and click Preview.</p>
-        {% endif %}
-      </div>
+  <!-- Preview -->
+  <div class="card" style="align-self:start; overflow:hidden;">
+    <div style="padding:18px 24px; border-bottom:1px solid #eceae1; font-size:15px; font-weight:600;">
+      Preview{% if selected_feed.name %} · {{ selected_feed.name }}{% endif %}
     </div>
+    {% if preview %}
+      {% for article in preview %}
+      <div style="padding:16px 24px; border-bottom:1px solid #f2f0e9;">
+        <a href="{{ article.link }}" target="_blank" style="font-size:14px; font-weight:600; color:#1b365d; line-height:1.35;">{{ article.title }}</a>
+        <p style="font-size:12.5px; color:#5a6b82; margin:5px 0 6px; line-height:1.5;">{{ article.summary[:120] | default('') }}{% if article.summary and article.summary | length > 120 %}…{% endif %}</p>
+        <div style="font-size:11px; color:#8a93a3; font-weight:500;">{{ article.source }} · {{ article.published }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="padding:40px; text-align:center;">
+        <p style="color:#8a93a3; font-size:14px;">Select a source and click Preview.</p>
+      </div>
+    {% endif %}
   </div>
 </div>
-<script>
-  const form = document.getElementById("source-form");
-  const previewButton = document.getElementById("preview-button");
-
-  form?.addEventListener("submit", (event) => {
-    const submitter = event.submitter;
-    if (submitter && submitter.value === "preview_source") {
-      previewButton?.classList.add("is-loading");
-      setTimeout(() => {
-        previewButton?.setAttribute("disabled", "disabled");
-      }, 0);
-    }
-  });
-</script>
 {% endblock %}

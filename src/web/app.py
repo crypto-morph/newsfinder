@@ -33,6 +33,7 @@ def create_app(config_path: str = "config.yaml") -> Flask:
         return {
             "app_name": "News Finder",
             "nav_links": app.config.get("NAV_LINKS", []),
+            "nf_config": app.config.get("NEWSFINDER_CONFIG", {}),
         }
 
     return app

@@ -1,421 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ title or app_name }}</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
-    />
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
-    <style>
-      body {
-        min-height: 100vh;
-        background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
-      }
-      .sidebar {
-        background: #0f1f3d;
-        color: #fff;
-        min-height: 100vh;
-        padding: 2rem 1.5rem;
-      }
-      .sidebar a {
-        color: rgba(255, 255, 255, 0.8);
-      }
-      .sidebar a.is-active {
-        color: #fff;
-        font-weight: 600;
-      }
-      .pill {
-        border-radius: 999px;
-        padding: 0.1rem 0.9rem;
-        font-weight: 600;
-        font-size: 0.85rem;
-      }
-      .card + .card {
-        margin-top: 1.5rem;
-      }
-      pre.config-json {
-        background: #0f1f3d;
-        color: #e5efff;
-        padding: 1rem;
-        border-radius: 0.75rem;
-        max-height: 400px;
-        overflow: auto;
-      }
-      
-      /* System Console */
-      .system-console {
-        position: fixed;
-        bottom: 0;
-        left: 16.6667%; /* Match sidebar width (column is-2) */
-        right: 0;
-        background: #fff;
-        border-top: 1px solid #dbdbdb;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-        z-index: 1000;
-        transition: transform 0.3s ease;
-        transform: translateY(calc(100% - 40px)); /* Collapsed state */
-      }
-      .system-console.is-open {
-        transform: translateY(0);
-      }
-      .console-header {
-        height: 40px;
-        background: #f5f5f5;
-        padding: 0 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        cursor: pointer;
-        border-bottom: 1px solid #dbdbdb;
-      }
-      .console-header:hover {
-        background: #ededed;
-      }
-      .console-body {
-        height: 250px;
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-      }
-      .console-logs {
-        flex: 1;
-        overflow-y: auto;
-        font-family: monospace;
-        font-size: 0.8rem;
-        background: #0f1f3d;
-        color: #e5efff;
-        padding: 0.5rem;
-        border-radius: 4px;
-      }
-      .console-logs p {
-        margin-bottom: 2px;
-        line-height: 1.4;
-      }
-      .log-time { color: #666; margin-right: 8px; }
-      .log-info { color: #e5efff; }
-      .log-success { color: #48c774; }
-      .log-warning { color: #ffdd57; }
-      .log-error { color: #f14668; }
-      .log-pipeline { color: #3298dc; }
-    </style>
-  </head>
-  <body>
-    <div class="columns is-gapless mb-0">
-      <aside class="column is-2 sidebar">
-        <div class="mb-5">
-          <p class="title is-4 has-text-white">{{ app_name }}</p>
-          <p class="subtitle is-7 has-text-grey-light">Bluecrest News Radar</p>
-        </div>
-        <nav class="menu">
-          <ul class="menu-list">
-            {% for link in nav_links %}
-            <li>
-              <a
-                href="{{ url_for(link.endpoint) }}"
-                class="{% if active_page == link.endpoint %}is-active{% endif %}"
-              >
-                <span class="icon">
-                  <i class="mdi {{ link.icon }}"></i>
-                </span>
-                <span>{{ link.label }}</span>
-              </a>
-            </li>
-            {% endfor %}
-          </ul>
-        </nav>
-      </aside>
-      <main class="column is-10 p-6" style="margin-bottom: 40px;">
-        <div class="mb-5">
-          <h1 class="title">{{ page_title or title or app_name }}</h1>
-          {% if page_subtitle %}
-          <p class="subtitle">{{ page_subtitle }}</p>
-          {% endif %}
-        </div>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="mb-4">
-          {% for category, message in messages %}
-          <div class="notification is-{{ category }} is-light">
-            {{ message }}
-          </div>
-          {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
-        {% block content %}{% endblock %}
-      </main>
-    </div>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ page_title | default('News Finder') }}{% endblock %} — News Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Montserrat', system-ui, sans-serif; color: #1b365d; background: #eceae1; -webkit-font-smoothing: antialiased; }
+  a { color: #009fdf; text-decoration: none; }
+  a:hover { color: #1b365d; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #c9c4b4; border-radius: 999px; }
+  ::-webkit-scrollbar-track { background: transparent; }
 
-    <!-- Global System Console -->
-    <div id="system-console" class="system-console">
-      <div class="console-header" onclick="SystemConsole.toggle()">
-        <div class="level is-mobile is-flex-grow-1">
-            <div class="level-left">
-                <span class="icon mr-2"><i class="mdi mdi-console"></i></span>
-                <span class="has-text-weight-semibold">System Console</span>
-                <span id="console-status" class="tag is-light ml-3 is-hidden">Idle</span>
-            </div>
-            <div class="level-right">
-                <span class="icon transition-icon" id="console-chevron"><i class="mdi mdi-chevron-up"></i></span>
-            </div>
-        </div>
-      </div>
-      <div class="console-body">
-        <div class="level is-mobile mb-2">
-            <div class="level-left">
-                <button id="console-run-btn" class="button is-small is-primary" onclick="event.stopPropagation(); SystemConsole.runPipeline()">
-                    <span class="icon is-small"><i class="mdi mdi-play"></i></span>
-                    <span>Run Pipeline</span>
-                </button>
-                <button class="button is-small is-text ml-2" onclick="event.stopPropagation(); SystemConsole.clear()">
-                    Clear Logs
-                </button>
-            </div>
-            <div class="level-right">
-                <label class="checkbox is-size-7">
-                    <input type="checkbox" id="auto-scroll" checked onclick="event.stopPropagation()"> Auto-scroll
-                </label>
-            </div>
-        </div>
-        <progress id="console-progress" class="progress is-small is-primary mb-2 is-hidden" value="0" max="100"></progress>
-        <div id="console-logs" class="console-logs">
-            <p class="has-text-grey">System ready.</p>
-        </div>
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar { width: 250px; flex: 0 0 250px; background: #1b365d; color: #fff; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+  .sidebar-logo { padding: 28px 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .sidebar-logo-title { font-weight: 700; font-size: 17px; letter-spacing: -0.2px; line-height: 1; }
+  .sidebar-logo-sub { font-weight: 300; font-size: 11px; color: #9bd3dd; margin-top: 3px; }
+  .sidebar-nav { padding: 16px 14px; display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 0 0 8px 0; font-size: 13.5px; font-weight: 400; color: rgba(255,255,255,0.7); transition: background 0.15s, color 0.15s; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .sidebar-nav a.active { background: rgba(0,159,223,0.15); color: #fff; font-weight: 600; }
+  .sidebar-nav a i { font-size: 18px; width: 20px; text-align: center; }
+  .sidebar-footer { padding: 18px 22px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; font-weight: 300; color: #9bd3dd; line-height: 1.5; }
+
+  .main { flex: 1; min-width: 0; padding: 38px 44px 90px; max-width: 1280px; }
+  .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 30px; padding-bottom: 22px; border-bottom: 2px solid #d6d2c4; }
+  .page-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #41748d; margin-bottom: 8px; }
+  .page-title { font-size: 30px; font-weight: 300; letter-spacing: -0.6px; color: #1b365d; }
+  .page-subtitle { margin-top: 8px; font-size: 14px; font-weight: 400; color: #5a6b82; }
+
+  .btn { display: inline-flex; align-items: center; gap: 9px; border: none; padding: 13px 22px; border-radius: 0 0 9px 0; font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.88; }
+  .btn-primary { background: #009fdf; color: #fff; box-shadow: 0 4px 14px rgba(0,159,223,0.28); }
+  .btn-secondary { background: #e7eef1; color: #41748d; }
+  .btn-danger { background: #fdecec; color: #e10600; }
+
+  .card { background: #fff; border-radius: 0 0 14px 0; box-shadow: 0 1px 3px rgba(27,54,93,0.07); }
+  .card-header { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eceae1; }
+  .card-body { padding: 20px 24px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 26px; }
+  .kpi-card { background: #fff; border-radius: 0 0 12px 0; padding: 20px 22px; box-shadow: 0 1px 3px rgba(27,54,93,0.07); }
+  .kpi-label { font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: #8a93a3; }
+  .kpi-value { font-size: 32px; font-weight: 600; color: #1b365d; margin-top: 8px; line-height: 1; }
+  .kpi-note { font-size: 12px; font-weight: 500; margin-top: 8px; }
+
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 0 0 6px 0; display: inline-block; }
+  .badge-green { color: #2dc84d; background: #e8f9ec; }
+  .badge-orange { color: #ffa300; background: #fff4e0; }
+  .badge-red { color: #e10600; background: #fdecec; }
+  .badge-blue { color: #009fdf; background: #e6f6fc; }
+  .badge-pill { border-radius: 999px; }
+
+  .tag { font-size: 11px; font-weight: 500; color: #41748d; background: #e7eef1; padding: 3px 10px; border-radius: 999px; display: inline-block; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: #8a93a3; padding: 12px 16px; border-bottom: 2px solid #eceae1; }
+  td { padding: 14px 16px; border-bottom: 1px solid #f2f0e9; font-size: 13px; color: #41505f; }
+
+  .form-label { font-size: 12px; font-weight: 600; color: #5a6b82; margin-bottom: 6px; display: block; }
+  .form-input { width: 100%; border: 1px solid #dfe4e8; border-radius: 7px; padding: 10px 12px; font-family: inherit; font-size: 13px; color: #1b365d; }
+  .form-input:focus { outline: none; border-color: #009fdf; box-shadow: 0 0 0 3px rgba(0,159,223,0.1); }
+
+  .alert-item { display: flex; gap: 16px; padding: 16px 0; border-bottom: 1px solid #f2f0e9; }
+  .alert-icon { flex: 0 0 46px; height: 46px; border-radius: 0 0 10px 0; display: flex; align-items: center; justify-content: center; }
+  .alert-meta { font-size: 11px; font-weight: 600; color: #8a93a3; letter-spacing: 0.4px; }
+  .alert-title { font-size: 14.5px; font-weight: 600; color: #1b365d; margin: 4px 0; line-height: 1.35; }
+
+  .flash-success { background: #e8f9ec; border-left: 3px solid #2dc84d; border-radius: 0 0 8px 0; padding: 13px 16px; font-size: 13px; color: #1a5a26; margin-bottom: 20px; }
+  .flash-error { background: #fdecec; border-left: 3px solid #e10600; border-radius: 0 0 8px 0; padding: 13px 16px; font-size: 13px; color: #7a1010; margin-bottom: 20px; }
+  .flash-info { background: #f0f7fb; border-left: 3px solid #009fdf; border-radius: 0 0 8px 0; padding: 13px 16px; font-size: 13px; color: #2d4459; margin-bottom: 20px; }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="30" height="36" viewBox="0 0 30 36" fill="none" aria-hidden="true">
+        <path d="M15 1L28 6v11c0 8.5-5.6 14.7-13 18C7.6 31.7 2 25.5 2 17V6L15 1z" fill="#009fdf"/>
+        <path d="M15 1L28 6v11c0 8.5-5.6 14.7-13 18V1z" fill="#00aec7"/>
+        <path d="M9 18l4 4 8-9" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <div>
+        <div class="sidebar-logo-title">News Finder</div>
+        <div class="sidebar-logo-sub">Health intelligence.</div>
       </div>
     </div>
 
-    <script>
-      const SystemConsole = {
-        isOpen: false,
-        isRunning: false,
-        el: document.getElementById('system-console'),
-        logsEl: document.getElementById('console-logs'),
-        progressEl: document.getElementById('console-progress'),
-        btnEl: document.getElementById('console-run-btn'),
-        chevronEl: document.getElementById('console-chevron'),
-        statusEl: document.getElementById('console-status'),
-        currentOffset: 0,
-        isLoadingHistory: false,
-        
-        toggle: function() {
-            this.isOpen = !this.isOpen;
-            if (this.isOpen) {
-                this.el.classList.add('is-open');
-                this.chevronEl.innerHTML = '<i class="mdi mdi-chevron-down"></i>';
-                // Scroll to bottom on open if near bottom, or just let it be
-                if (this.currentOffset === 0) {
-                     this.logsEl.scrollTop = this.logsEl.scrollHeight;
-                }
-            } else {
-                this.el.classList.remove('is-open');
-                this.chevronEl.innerHTML = '<i class="mdi mdi-chevron-up"></i>';
-            }
-        },
+    <nav class="sidebar-nav">
+      {% for link in nav_links %}
+      {% set link_url = url_for(link.endpoint) %}
+      <a href="{{ link_url }}" class="{% if request.path == link_url %}active{% endif %}">
+        <i class="mdi {{ link.icon }}"></i>
+        <span>{{ link.label }}</span>
+      </a>
+      {% endfor %}
+    </nav>
 
-        open: function() {
-            if (!this.isOpen) this.toggle();
-        },
+    <div class="sidebar-footer">
+      Live healthier for longer with Bluecrest health intelligence.
+    </div>
+  </aside>
 
-        clear: function() {
-            this.logsEl.innerHTML = '';
-            this.currentOffset = 0;
-            this.log('Logs cleared.', 'info');
-        },
+  <!-- MAIN -->
+  <main class="main">
+    <header class="page-header">
+      <div>
+        {% if page_eyebrow %}<div class="page-eyebrow">{{ page_eyebrow }}</div>{% endif %}
+        <h1 class="page-title">{{ page_title | default('News Finder') }}</h1>
+        {% if page_subtitle %}<p class="page-subtitle">{{ page_subtitle }}</p>{% endif %}
+      </div>
+      {% block header_actions %}{% endblock %}
+    </header>
 
-        log: function(msg, type='info', details=null) {
-            const line = this.createLogLine(msg, type, Date.now() / 1000);
-            this.logsEl.appendChild(line);
-            
-            if (document.getElementById('auto-scroll').checked) {
-                this.logsEl.scrollTop = this.logsEl.scrollHeight;
-            }
-        },
-        
-        createLogLine: function(msg, type, timestamp) {
-            const line = document.createElement('p');
-            const time = new Date(timestamp * 1000).toLocaleTimeString();
-            let colorClass = `log-${type}`;
-            // Map legacy types if needed
-            if (!['info', 'success', 'warning', 'error', 'pipeline'].includes(type)) {
-                colorClass = 'log-info';
-            }
-            
-            line.innerHTML = `<span class="log-time" style="opacity:0.6">[${time}]</span> <span class="${colorClass}">${msg}</span>`;
-            return line;
-        },
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+      <div class="flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% endwith %}
 
-        runPipeline: async function() {
-            if (this.isRunning) return;
-            this.isRunning = true;
-            this.open();
-            this.btnEl.classList.add('is-loading');
-            this.btnEl.disabled = true;
-            this.progressEl.classList.remove('is-hidden');
-            this.progressEl.value = 0;
-            this.statusEl.classList.remove('is-hidden');
-            this.statusEl.innerText = "Running...";
-            
-            this.log('Starting pipeline run...', 'pipeline');
-
-            try {
-                // 1. Warmup
-                this.log('Warming up AI models...', 'info');
-                try {
-                    const wResp = await fetch("{{ url_for('api.api_pipeline_warmup') }}", {method: 'POST'});
-                    const wData = await wResp.json();
-                    if (wData.status === 'success') this.log('AI models ready.', 'success');
-                    else this.log('Warmup warning: ' + wData.message, 'warning');
-                } catch (e) {
-                    this.log('Warmup skipped (network): ' + e.message, 'warning');
-                }
-
-                // 2. Fetch
-                this.log('Fetching articles...', 'info');
-                const fResp = await fetch("{{ url_for('api.api_pipeline_fetch') }}", {method: 'POST'});
-                const fData = await fResp.json();
-                
-                if (fData.status === 'error') throw new Error(fData.message);
-                
-                const articles = fData.articles || [];
-                this.log(`Found ${articles.length} articles.`, 'info');
-                
-                if (articles.length === 0) {
-                    this.log('No new articles to process.', 'warning');
-                } else {
-                    // 3. Process Loop
-                    let processed = 0;
-                    for (const article of articles) {
-                        this.statusEl.innerText = `Processing ${processed+1}/${articles.length}`;
-                        this.log(`Analyzing: ${article.title.substring(0, 50)}...`, 'info');
-                        
-                        try {
-                            const pResp = await fetch("{{ url_for('api.api_pipeline_process') }}", {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify(article)
-                            });
-                            const res = await pResp.json();
-                            
-                            if (res.status === 'imported') {
-                                this.log(`Imported: ${article.title}`, 'success');
-                                if (res.alert) this.log('!!! ALERT TRIGGERED !!!', 'error');
-                            } else if (res.status === 'skipped') {
-                                this.log(`Skipped: ${article.title} (${res.reason})`, 'warning');
-                            }
-                        } catch (err) {
-                            this.log(`Error processing ${article.title}: ${err.message}`, 'error');
-                        }
-                        
-                        processed++;
-                        this.progressEl.value = (processed / articles.length) * 100;
-                    }
-                    
-                    // 4. Complete
-                    await fetch("{{ url_for('api.api_pipeline_complete') }}", {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({count: processed})
-                    });
-                }
-
-                this.log('Pipeline run complete.', 'success');
-                this.statusEl.innerText = "Complete";
-                
-                // Refresh page after short delay to show new data
-                setTimeout(() => location.reload(), 1500);
-
-            } catch (e) {
-                this.log(`Pipeline failed: ${e.message}`, 'error');
-                this.statusEl.innerText = "Error";
-            } finally {
-                this.isRunning = false;
-                this.btnEl.classList.remove('is-loading');
-                this.btnEl.disabled = false;
-                setTimeout(() => {
-                    this.progressEl.classList.add('is-hidden');
-                    this.statusEl.classList.add('is-hidden');
-                }, 3000);
-            }
-        },
-        
-        loadHistory: async function() {
-            if (this.isLoadingHistory) return;
-            this.isLoadingHistory = true;
-            
-            // If offset is 0, we are loading initial history, likely clear container first?
-            // But we might have real-time logs already.
-            // Let's assume offset=0 is called on init.
-            
-            const limit = 20;
-            try {
-                const resp = await fetch(`/api/events?limit=${limit}&offset=${this.currentOffset}`);
-                const events = await resp.json();
-                
-                if (!events || events.length === 0) {
-                    this.isLoadingHistory = false;
-                    return;
-                }
-
-                // API returns [Newest, ..., Oldest] in that slice
-                // We want to display them chronologically.
-                // If scrolling up (prepending), we want the batch to be inserted at top.
-                // The batch itself needs to be ordered Oldest -> Newest.
-                const fragment = document.createDocumentFragment();
-                
-                // events is [Newest -> Oldest]
-                // reverse to [Oldest -> Newest] for display order
-                events.slice().reverse().forEach(e => {
-                    const line = this.createLogLine(e.message, e.level === 'pipeline' ? 'pipeline' : e.level, e.timestamp);
-                    fragment.appendChild(line);
-                });
-
-                const oldScrollHeight = this.logsEl.scrollHeight;
-                const wasAtTop = this.logsEl.scrollTop === 0;
-
-                if (this.currentOffset === 0) {
-                    // Initial load: append to whatever "System ready" msg might be there
-                    // or just prepend to keep real-time logs at bottom?
-                    // Actually, if we just loaded the page, logsEl is mostly empty.
-                    // We append.
-                    this.logsEl.appendChild(fragment);
-                    // Scroll to bottom initially
-                    this.logsEl.scrollTop = this.logsEl.scrollHeight;
-                } else {
-                    // Prepend
-                    this.logsEl.insertBefore(fragment, this.logsEl.firstChild);
-                    // Restore scroll position
-                    const newScrollHeight = this.logsEl.scrollHeight;
-                    this.logsEl.scrollTop = newScrollHeight - oldScrollHeight;
-                }
-
-                this.currentOffset += events.length;
-                
-            } catch (e) {
-                console.warn("Could not load event history", e);
-            } finally {
-                this.isLoadingHistory = false;
-            }
-        }
-      };
-
-      // Scroll listener for infinite scroll
-      document.getElementById('console-logs').addEventListener('scroll', function(e) {
-          if (this.scrollTop === 0) {
-              SystemConsole.loadHistory();
-          }
-      });
-
-      // Load history on init
-      document.addEventListener('DOMContentLoaded', () => {
-          SystemConsole.loadHistory();
-      });
-    </script>
-  </body>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% block extra_scripts %}{% endblock %}
+</body>
 </html>

@@ -1,172 +1,101 @@
 {% extends "base.html" %}
-{% set page_title = "System Dashboard" %}
-{% set page_subtitle = "Snapshot of ingestion health and recent alerts" %}
+{% set page_title = "Intelligence dashboard" %}
+{% set page_eyebrow = "Overview" %}
+{% set page_subtitle = "Real-time competitive intelligence for Bluecrest Wellness" %}
+
+{% block header_actions %}
+<form method="post" action="{{ url_for('api.api_pipeline_fetch') }}" style="margin:0;">
+  <button type="submit" class="btn btn-primary">
+    <i class="mdi mdi-play-circle"></i> Run pipeline
+  </button>
+</form>
+{% endblock %}
 
 {% block content %}
-<div class="columns">
-  <div class="column is-one-third">
-    <div class="card">
-      <header class="card-header">
-        <p class="card-header-title">System Status</p>
-      </header>
-      <div class="card-content">
-        <p class="title is-5">Last Run</p>
-        <p class="subtitle is-6">{{ status.last_run }}</p>
-        <hr />
-        <p class="title is-5">Articles Processed</p>
-        <p class="subtitle is-6">{{ status.articles_processed }}</p>
-        <p class="is-size-7 has-text-grey">Total stored: {{ total_articles }}</p>
-        
-        <div class="mt-4">
-          <button id="run-pipeline-btn" class="button is-primary is-fullwidth" onclick="SystemConsole.runPipeline()">
-            Run Pipeline
-          </button>
-        </div>
-        
-      </div>
-    </div>
-
-    <div class="card mt-5">
-      <header class="card-header">
-        <p class="card-header-title">Company Context</p>
-      </header>
-      <div class="card-content">
-        {% if context.structured and context.structured.companies %}
-        {% set primary = context.structured.companies[0] %}
-        <div class="has-text-centered">
-          <p class="heading">Primary Profile</p>
-          <p class="title is-4">
-            <a href="{{ url_for('config.config_view') }}" class="has-text-primary">
-              <span class="icon is-medium"><i class="mdi mdi-domain"></i></span>
-              {{ primary.company_name }}
-            </a>
-          </p>
-          <p class="subtitle is-6 has-text-grey mt-2">
-            {{ primary.offer_summary|truncate(80) }}
-          </p>
-        </div>
-        {% else %}
-        <p class="has-text-centered">
-          <a href="{{ url_for('config.config_view') }}">Configure Company Profile</a>
-        </p>
-        {% endif %}
-      </div>
-    </div>
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card" style="border-top:3px solid #009fdf;">
+    <div class="kpi-label">Articles analysed</div>
+    <div class="kpi-value">{{ articles | length }}</div>
+    <div class="kpi-note" style="color:#009fdf;">recent batch</div>
   </div>
+  <div class="kpi-card" style="border-top:3px solid #e10600;">
+    <div class="kpi-label">Active alerts</div>
+    <div class="kpi-value">{{ alerts | length }}</div>
+    <div class="kpi-note" style="color:#e10600;">above threshold</div>
+  </div>
+  <div class="kpi-card" style="border-top:3px solid #2dc84d;">
+    <div class="kpi-label">Total stored</div>
+    <div class="kpi-value">{{ total_articles | default(0) }}</div>
+    <div class="kpi-note" style="color:#2dc84d;">in knowledge base</div>
+  </div>
+  <div class="kpi-card" style="border-top:3px solid #ffa300;">
+    <div class="kpi-label">Last run</div>
+    <div class="kpi-value" style="font-size:16px;">{{ status.last_run | default('Never') }}</div>
+    <div class="kpi-note" style="color:#ffa300;">{{ status.articles_processed | default(0) }} processed</div>
+  </div>
+</div>
 
-  <div class="column">
-    <div class="card">
-      <header class="card-header">
-        <p class="card-header-title">Recent Alerts</p>
-      </header>
-      <div class="card-content">
-        {% if alerts %}
-        <div class="timeline is-centered">
-          {% for alert in alerts %}
-          <div class="timeline-item is-primary">
-            <div class="timeline-marker is-icon">
-              <span class="icon">
-                <i class="mdi mdi-bell-ring"></i>
-              </span>
-            </div>
-            <div class="timeline-content">
-              <p class="heading">{{ alert.timestamp }} | {{ alert.source }}</p>
-              <p class="title is-6">
-                <a href="{{ url_for('articles.articles_view') }}#article-{{ alert.id }}" class="has-text-link">{{ alert.title }}</a>
-              </p>
-              <p class="subtitle is-7">Relevance {{ alert.relevance_score }} · Impact {{ alert.impact_score }}</p>
+<div style="display:grid; grid-template-columns:1.55fr 1fr; gap:24px;">
+  <!-- Alerts -->
+  <section class="card">
+    <div class="card-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <i class="mdi mdi-bell-ring" style="color:#e10600; font-size:20px;"></i>
+        <h2 style="font-size:16px; font-weight:600;">Recent alerts</h2>
+      </div>
+      {% if alerts %}
+      <span class="badge badge-red badge-pill">{{ alerts | length }} new</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      {% if alerts %}
+        {% for alert in alerts[:8] %}
+        <div class="alert-item">
+          <div class="alert-icon" style="background:{% if alert.relevance_score >= 8 %}#fdecec{% elif alert.relevance_score >= 6 %}#fff4e0{% else %}#e8f9ec{% endif %};">
+            <i class="mdi {% if alert.relevance_score >= 8 %}mdi-alert-circle{% elif alert.relevance_score >= 6 %}mdi-alert{% else %}mdi-information{% endif %}" style="color:{% if alert.relevance_score >= 8 %}#e10600{% elif alert.relevance_score >= 6 %}#ffa300{% else %}#2dc84d{% endif %}; font-size:22px;"></i>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div class="alert-meta">{{ alert.timestamp[:16] | default('') }} · {{ alert.source }}</div>
+            <a href="{{ alert.url }}" target="_blank" class="alert-title" style="display:block;">{{ alert.title }}</a>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <span class="badge badge-green">Relevance {{ alert.relevance_score }}</span>
+              <span class="badge {% if alert.impact_score >= 7 %}badge-red{% elif alert.impact_score >= 5 %}badge-orange{% else %}badge-blue{% endif %}">Impact {{ alert.impact_score }}</span>
             </div>
           </div>
-          {% endfor %}
         </div>
-        {% else %}
-        <p>No alerts yet. Run the pipeline to populate insights.</p>
-        {% endif %}
-      </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:#8a93a3; font-size:14px; padding:20px 0;">No alerts yet. Run the pipeline to analyse articles.</p>
+      {% endif %}
     </div>
+  </section>
 
-    <div class="card mt-5">
-      <header class="card-header">
-        <p class="card-header-title">Latest Articles</p>
-      </header>
-      <div class="card-content">
-        {% if company_filter or goal_filter %}
-        <div class="notification is-info is-light">
-          Filtering
-          {% if company_filter %}
-          by company relevance
-          {% endif %}
-          {% if goal_filter %}
-          for goal: <strong>{{ goal_filter }}</strong>
-          {% endif %}
-          · <a href="{{ url_for('dashboard.dashboard') }}">Clear filters</a>
+  <!-- Right column -->
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <!-- Company context card -->
+    <section style="background:#1b365d; color:#fff; border-radius:0 0 14px 0; padding:24px; position:relative; overflow:hidden;">
+      <svg width="120" height="140" viewBox="0 0 30 36" style="position:absolute; right:-24px; top:-14px; opacity:0.09;"><path d="M15 1L28 6v11c0 8.5-5.6 14.7-13 18C7.6 31.7 2 25.5 2 17V6L15 1z" fill="#fff"/></svg>
+      <div style="font-size:11px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:#9bd3dd;">Company context</div>
+      <div style="font-size:22px; font-weight:600; margin-top:10px;">{{ nf_config.companies[0].name | default('Bluecrest Wellness') }}</div>
+      <p style="font-size:13px; font-weight:300; line-height:1.55; color:#cfe3ea; margin:12px 0 0;">
+        Primary profile · Monitoring {{ nf_config.companies | length }} companies across {{ nf_config.feeds | length }} feeds.
+      </p>
+      <a href="{{ url_for('config.config_view') }}" style="display:inline-flex; align-items:center; gap:6px; margin-top:18px; font-size:12.5px; font-weight:600; color:#00aec7;">Edit profile <i class="mdi mdi-arrow-right"></i></a>
+    </section>
+
+    <!-- Pipeline status -->
+    <section class="card">
+      <div class="card-body">
+        <h2 style="margin-bottom:16px; font-size:15px; font-weight:600;">Pipeline status</h2>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; justify-content:space-between; font-size:13px;"><span style="color:#5a6b82;">Last run</span><span style="font-weight:600;">{{ status.last_run | default('Never') }}</span></div>
+          <div style="display:flex; justify-content:space-between; font-size:13px;"><span style="color:#5a6b82;">Articles processed</span><span style="font-weight:600;">{{ status.articles_processed | default(0) }}</span></div>
+          <div style="display:flex; justify-content:space-between; font-size:13px;"><span style="color:#5a6b82;">Total stored</span><span style="font-weight:600;">{{ total_articles | default(0) }}</span></div>
+          <div style="display:flex; justify-content:space-between; font-size:13px;"><span style="color:#5a6b82;">Active feeds</span><span style="font-weight:600;">{{ config.feeds | length }}</span></div>
         </div>
-        {% endif %}
-        {% if articles %}
-        <table class="table is-fullwidth">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Source</th>
-              <th>Scores</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for article in articles %}
-            <tr>
-              <td>
-                <p class="has-text-weight-semibold">
-                  <a href="{{ article.url }}" target="_blank">{{ article.title }}</a>
-                </p>
-                <p class="is-size-7">{{ article.published_date }}</p>
-                {% if article.goal_matches %}
-                <p class="is-size-7 has-text-grey">Matches goals: {{ article.goal_matches|join('; ') }}</p>
-                {% endif %}
-                {% if article.entity_tags or article.topic_tags %}
-                <div class="tags mt-2">
-                  {% for tag in article.entity_tags %}
-                  <span class="tag is-light">{{ tag }}</span>
-                  {% endfor %}
-                  {% for kw in article.topic_tags %}
-                  <span class="tag is-info is-light">{{ kw }}</span>
-                  {% endfor %}
-                </div>
-                {% endif %}
-              </td>
-              <td>{{ article.source }}</td>
-              <td>
-                <span class="pill has-background-primary-light has-text-primary">
-                  R {{ article.relevance_score }}
-                </span>
-                <span class="pill has-background-warning-light has-text-warning-dark ml-2">
-                  I {{ article.impact_score }}
-                </span>
-                <div class="mt-2 field is-grouped">
-                  <p class="control">
-                    <a class="button is-small is-link is-light" href="{{ url_for('articles.edit_tags', article_id=article.id) }}">
-                      Edit Tags
-                    </a>
-                  </p>
-                  <p class="control">
-                    <form method="post" action="{{ url_for('articles.delete_article_route', article_id=article.id) }}" onsubmit="return confirm('Delete this article?');">
-                      <button class="button is-small is-danger is-light" title="Delete Article">
-                        <span class="icon is-small">
-                          <i class="mdi mdi-delete"></i>
-                        </span>
-                      </button>
-                    </form>
-                  </p>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% else %}
-        <p>No articles stored yet.</p>
-        {% endif %}
       </div>
-    </div>
+    </section>
   </div>
 </div>
 {% endblock %}
