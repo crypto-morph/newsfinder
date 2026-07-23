@@ -1,87 +1,63 @@
 {% extends "base.html" %}
 {% set page_title = "Import Archive" %}
+{% set page_eyebrow = "Backfill" %}
 {% set page_subtitle = "Backfill articles from BBC Archives" %}
 
 {% block content %}
-<div class="card">
-    <div class="card-content">
-        <div class="content">
-            <p>Select a month to backfill articles from the BBC UK Archive sitemaps. This process will scan the sitemaps for the selected period, fetch the article URLs, and run them through the ingestion pipeline.</p>
-            
-            <div class="notification is-warning is-light">
-                <button class="delete"></button>
-                <strong>Note:</strong> This process can take a significant amount of time depending on the number of articles found. It is recommended to run this during off-peak hours.
-            </div>
-
-            <form method="post" action="{{ url_for('import_routes.import_view') }}">
-                <input type="hidden" name="action" value="start_backfill">
-                
-                <div class="field is-horizontal">
-                    <div class="field-label is-normal">
-                        <label class="label">Target Month</label>
-                    </div>
-                    <div class="field-body">
-                        <div class="field">
-                            <p class="control is-expanded has-icons-left">
-                                <input class="input" type="month" name="target_month" required 
-                                       min="2020-01" max="{{ now.strftime('%Y-%m') }}" 
-                                       value="{{ now.strftime('%Y-%m') }}">
-                                <span class="icon is-small is-left">
-                                    <i class="mdi mdi-calendar"></i>
-                                </span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field is-horizontal">
-                    <div class="field-label is-normal">
-                        <label class="label">Limit</label>
-                    </div>
-                    <div class="field-body">
-                        <div class="field">
-                            <p class="control is-expanded">
-                                <input class="input" type="number" name="limit" value="50" min="1" max="500">
-                            </p>
-                            <p class="help">Maximum number of articles to import to avoid overwhelming the system.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field is-horizontal">
-                    <div class="field-label">
-                        <!-- Left empty for spacing -->
-                    </div>
-                    <div class="field-body">
-                        <div class="field">
-                            <div class="control">
-                                <button type="submit" class="button is-primary">
-                                    <span class="icon"><i class="mdi mdi-cloud-download"></i></span>
-                                    <span>Start Backfill</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
+<div style="max-width:700px;">
+  <section class="card">
+    <div class="card-header">
+      <h2 style="font-size:14px; font-weight:600;">BBC Archive Backfill</h2>
     </div>
-</div>
+    <div class="card-body">
+      <p style="font-size:13px; color:#41505f; line-height:1.6; margin-bottom:18px;">
+        Select a month to backfill articles from the BBC UK Archive sitemaps. This process will scan the sitemaps for the selected period, fetch the article URLs, and run them through the ingestion pipeline.
+      </p>
 
-{% if active_backfill %}
-<div class="card mt-5">
-    <header class="card-header">
-        <p class="card-header-title">
-            Backfill Status
-        </p>
-    </header>
-    <div class="card-content">
-        <div class="content">
-            <p><strong>Month:</strong> {{ active_backfill.month }}</p>
-            <p><strong>Status:</strong> {{ active_backfill.status }}</p>
-            <progress class="progress is-info" value="{{ active_backfill.progress }}" max="100">{{ active_backfill.progress }}%</progress>
+      <div class="flash-info" style="margin-bottom:22px;">
+        <strong>Note:</strong> This process can take a significant amount of time depending on the number of articles found. It is recommended to run this during off-peak hours.
+      </div>
+
+      <form method="post" action="{{ url_for('import_routes.import_view') }}">
+        <input type="hidden" name="action" value="start_backfill">
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:22px;">
+          <div>
+            <label class="form-label">Target Month</label>
+            <input class="form-input" type="month" name="target_month" required
+                   min="2020-01" max="{{ now.strftime('%Y-%m') }}"
+                   value="{{ now.strftime('%Y-%m') }}">
+          </div>
+          <div>
+            <label class="form-label">Limit</label>
+            <input class="form-input" type="number" name="limit" value="50" min="1" max="500">
+            <p style="font-size:11px; color:#8a93a3; margin-top:6px;">Maximum articles to import.</p>
+          </div>
         </div>
+
+        <button type="submit" class="btn btn-primary">
+          <i class="mdi mdi-cloud-download"></i> Start Backfill
+        </button>
+      </form>
     </div>
+  </section>
+
+  {% if active_backfill %}
+  <section class="card" style="margin-top:24px;">
+    <div class="card-header">
+      <h2 style="font-size:14px; font-weight:600;">Backfill Status</h2>
+      <span class="badge badge-blue badge-pill">{{ active_backfill.status }}</span>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px; color:#41505f; margin-bottom:12px;">
+        <strong>Month:</strong> {{ active_backfill.month }}
+      </p>
+      <div style="background:#eceae1; border-radius:6px; height:8px; overflow:hidden;">
+        <div style="background:#009fdf; height:100%; width:{{ active_backfill.progress }}%; transition:width 0.3s;"></div>
+      </div>
+      <p style="font-size:11px; color:#8a93a3; margin-top:6px; text-align:right;">{{ active_backfill.progress }}%</p>
+    </div>
+  </section>
+  {% endif %}
 </div>
-{% endif %}
 {% endblock %}

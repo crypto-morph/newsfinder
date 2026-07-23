@@ -1,300 +1,295 @@
 {% extends "base.html" %}
+{% set page_title = "LLM Verification" %}
+{% set page_eyebrow = "Audit" %}
+{% set page_subtitle = "Auditing local model performance against " ~ provider_model %}
+
+{% block extra_head %}
+<style>
+  .model-badge { display:inline-flex; align-items:center; gap:0; font-size:12px; border-radius:6px; overflow:hidden; }
+  .model-badge-label { background:#1b365d; color:#fff; padding:5px 10px; font-weight:600; }
+  .model-badge-value { background:#009fdf; color:#fff; padding:5px 10px; font-weight:500; }
+
+  .opt-panel { margin-bottom:28px; }
+  .opt-toggle { cursor:pointer; }
+  .opt-content { display:none; padding-top:20px; }
+  .opt-content.open { display:block; }
+
+  .prompt-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+  @media (max-width:900px) { .prompt-grid { grid-template-columns:1fr; } }
+  .prompt-area { width:100%; min-height:220px; font-family:monospace; font-size:12px; padding:12px; border:1px solid #dfe4e8; border-radius:7px; resize:vertical; color:#1b365d; }
+  .prompt-area:focus { outline:none; border-color:#009fdf; box-shadow:0 0 0 3px rgba(0,159,223,0.1); }
+
+  .score-cell { text-align:center; }
+  .score-badge { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; font-size:14px; font-weight:700; }
+  .score-high { background:#e8f9ec; color:#2dc84d; }
+  .score-med { background:#fff4e0; color:#ffa300; }
+  .score-low { background:#f5f3ee; color:#8a93a3; }
+  .score-flag { background:#fdecec; color:#e10600; }
+
+  .diff-ok { color:#2dc84d; }
+  .diff-warn { color:#ffa300; }
+  .diff-bad { color:#e10600; }
+
+  .verif-table { font-size:12.5px; }
+  .verif-table td { vertical-align:top; }
+  .verif-table .reasoning-cell { font-size:11.5px; color:#5a6b82; line-height:1.4; max-width:220px; }
+  .verif-table .title-cell { font-weight:600; color:#1b365d; max-width:180px; }
+  .verif-table .time-cell { font-size:11px; color:#8a93a3; white-space:nowrap; }
+
+  .flagged-row { background:#fef8f8; }
+
+  .btn-group { display:flex; gap:10px; margin-top:12px; }
+  .btn-group .btn { flex:1; justify-content:center; }
+
+  #test-results-box { display:none; margin-top:20px; }
+  #test-results-box.open { display:block; }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<div class="model-badge">
+  <span class="model-badge-label">Local Model</span>
+  <span class="model-badge-value">{{ local_model }}</span>
+</div>
+{% endblock %}
 
 {% block content %}
-<div class="container is-fluid">
-    <div class="columns is-vcentered mb-5">
-        <div class="column">
-            <h1 class="title">
-                <span class="icon is-large has-text-info">
-                    <i class="mdi mdi-shield-check"></i>
-                </span>
-                LLM Verification
-            </h1>
-            <h2 class="subtitle">
-                Auditing local model performance against {{ provider_model }}
-            </h2>
-        </div>
-        <div class="column is-narrow">
-            <div class="tags has-addons">
-                <span class="tag is-dark">Local Model</span>
-                <span class="tag is-primary">{{ local_model }}</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Optimization Section -->
-    <div class="card mb-6">
-        <header class="card-header has-background-info-light">
-            <p class="card-header-title">
-                <span class="icon mr-2"><i class="mdi mdi-auto-fix"></i></span>
-                Prompt Optimization
-            </p>
-            <button class="card-header-icon" aria-label="more options" onclick="document.getElementById('opt-content').classList.toggle('is-hidden')">
-                <span class="icon">
-                    <i class="mdi mdi-chevron-down"></i>
-                </span>
+<!-- Prompt Optimization -->
+<section class="card opt-panel">
+  <div class="card-header opt-toggle" onclick="document.getElementById('opt-content').classList.toggle('open')">
+    <h2 style="font-size:14px; font-weight:600; display:flex; align-items:center; gap:8px;">
+      <i class="mdi mdi-auto-fix" style="color:#009fdf;"></i> Prompt Optimization
+    </h2>
+    <i class="mdi mdi-chevron-down" style="color:#8a93a3; font-size:20px;"></i>
+  </div>
+  <div class="card-body">
+    <div class="opt-content" id="opt-content">
+      <div class="prompt-grid">
+        <!-- Current Prompt -->
+        <div>
+          <label class="form-label">Current Prompt</label>
+          <textarea class="prompt-area" readonly>{{ current_prompt }}</textarea>
+          <div style="margin-top:12px;">
+            <button class="btn btn-secondary" id="btn-optimize" onclick="optimizePrompt()" style="width:100%; justify-content:center;">
+              <i class="mdi mdi-magic-staff"></i> Generate Improved Prompt (from Failures)
             </button>
-        </header>
-        <div class="card-content is-hidden" id="opt-content">
-            <div class="columns">
-                <!-- Current Prompt -->
-                <div class="column is-6">
-                    <h3 class="title is-6">Current Prompt</h3>
-                    <div class="control">
-                        <textarea class="textarea is-family-monospace is-small" rows="15" readonly>{{ current_prompt }}</textarea>
-                    </div>
-                    <div class="mt-3">
-                        <button class="button is-info is-outlined is-fullwidth" id="btn-optimize" onclick="optimizePrompt()">
-                            <span class="icon"><i class="mdi mdi-magic-staff"></i></span>
-                            <span>Generate Improved Prompt (from Failures)</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- New Prompt -->
-                <div class="column is-6">
-                    <h3 class="title is-6">Proposed Prompt</h3>
-                    <div class="control">
-                        <textarea class="textarea is-family-monospace is-small" rows="15" id="new-prompt" placeholder="Generated prompt will appear here..."></textarea>
-                    </div>
-                    <div class="field is-grouped mt-3">
-                        <p class="control is-expanded">
-                            <button class="button is-primary is-outlined is-fullwidth" id="btn-test" onclick="testPrompt()" disabled>
-                                <span class="icon"><i class="mdi mdi-test-tube"></i></span>
-                                <span>Test on Failures</span>
-                            </button>
-                        </p>
-                        <p class="control is-expanded">
-                            <button class="button is-success is-fullwidth" id="btn-apply" onclick="applyPrompt()" disabled>
-                                <span class="icon"><i class="mdi mdi-check"></i></span>
-                                <span>Apply Changes</span>
-                            </button>
-                        </p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Test Results -->
-            <div class="box is-hidden" id="test-results-box">
-                <h4 class="title is-6">Test Results</h4>
-                <div class="table-container">
-                    <table class="table is-fullwidth is-narrow is-size-7">
-                        <thead>
-                            <tr>
-                                <th>Article</th>
-                                <th class="has-text-centered">Old Score</th>
-                                <th class="has-text-centered">Target</th>
-                                <th class="has-text-centered">New Score</th>
-                                <th class="has-text-centered">Result</th>
-                                <th>New Reasoning</th>
-                            </tr>
-                        </thead>
-                        <tbody id="test-results-body">
-                            <!-- JS will populate -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+          </div>
         </div>
-    </div>
 
-    {% if not verifications %}
-    <div class="notification is-info is-light">
-        <button class="delete"></button>
-        No verification records found yet. Run the pipeline to generate audits.
-        <br>
-        <small>Sampling Rates: High Relevance: {{ sample_rate_high*100 }}% | Random: {{ sample_rate_random*100 }}%</small>
-    </div>
-    {% else %}
-    
-    <div class="table-container">
-        <table class="table is-fullwidth is-hoverable is-striped">
+        <!-- Proposed Prompt -->
+        <div>
+          <label class="form-label">Proposed Prompt</label>
+          <textarea class="prompt-area" id="new-prompt" placeholder="Generated prompt will appear here..."></textarea>
+          <div class="btn-group">
+            <button class="btn btn-secondary" id="btn-test" onclick="testPrompt()" disabled>
+              <i class="mdi mdi-test-tube"></i> Test on Failures
+            </button>
+            <button class="btn btn-primary" id="btn-apply" onclick="applyPrompt()" disabled>
+              <i class="mdi mdi-check"></i> Apply Changes
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Test Results -->
+      <div id="test-results-box" class="card" style="box-shadow:none; border:1px solid #eceae1;">
+        <div class="card-header">
+          <h3 style="font-size:13px; font-weight:600;">Test Results</h3>
+        </div>
+        <div class="card-body" style="overflow-x:auto;">
+          <table class="verif-table">
             <thead>
-                <tr>
-                    <th>Time</th>
-                    <th style="width: 20%;">Article</th>
-                    <th class="has-text-centered">Local Score</th>
-                    <th>Local Reasoning</th>
-                    <th class="has-text-centered">Remote Score</th>
-                    <th>Remote Reasoning</th>
-                    <th class="has-text-centered">Diff</th>
-                </tr>
+              <tr>
+                <th>Article</th>
+                <th style="text-align:center;">Old Score</th>
+                <th style="text-align:center;">Target</th>
+                <th style="text-align:center;">New Score</th>
+                <th style="text-align:center;">Result</th>
+                <th>New Reasoning</th>
+              </tr>
             </thead>
-            <tbody>
-                {% for v in verifications %}
-                <tr class="{% if v.flagged %}has-background-danger-light{% endif %}">
-                    <td class="is-size-7" title="{{ v.timestamp }}">
-                        {{ v.timestamp.split('T')[0] }}<br>
-                        {{ v.timestamp.split('T')[1][:5] }}
-                    </td>
-                    <td>
-                        <a href="{{ v.article_url }}" target="_blank" class="has-text-weight-bold">
-                            {{ v.article_title }}
-                        </a>
-                    </td>
-                    
-                    <!-- Local Result -->
-                    <td class="has-text-centered">
-                        <span class="tag is-medium 
-                            {% if v.local_score >= 7 %}is-success
-                            {% elif v.local_score >= 4 %}is-warning
-                            {% else %}is-light{% endif %}">
-                            {{ v.local_score }}
-                        </span>
-                    </td>
-                    <td class="is-size-7">
-                        {{ v.local_reasoning }}
-                    </td>
-
-                    <!-- Remote Result -->
-                    <td class="has-text-centered">
-                        <span class="tag is-medium 
-                            {% if v.remote_score >= 7 %}is-success
-                            {% elif v.remote_score >= 4 %}is-warning
-                            {% else %}is-light{% endif %}">
-                            {{ v.remote_score }}
-                        </span>
-                    </td>
-                    <td class="is-size-7">
-                        {{ v.remote_reasoning }}
-                    </td>
-
-                    <!-- Discrepancy -->
-                    <td class="has-text-centered">
-                        {% if v.flagged %}
-                            <span class="tag is-danger has-text-weight-bold">
-                                <i class="mdi mdi-alert mr-1"></i> {{ v.discrepancy }}
-                            </span>
-                        {% elif v.discrepancy == 0 %}
-                            <span class="tag is-light is-success">
-                                <i class="mdi mdi-check"></i>
-                            </span>
-                        {% else %}
-                            <span class="tag is-light">
-                                {{ v.discrepancy }}
-                            </span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+            <tbody id="test-results-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-    {% endif %}
+  </div>
+</section>
+
+<!-- Verification Records -->
+{% if not verifications %}
+<div class="flash-info">
+  No verification records found yet. Run the pipeline to generate audits.
+  <br><small>Sampling Rates: High Relevance: {{ sample_rate_high*100 }}% | Random: {{ sample_rate_random*100 }}%</small>
 </div>
+{% else %}
+<section class="card">
+  <div class="card-header">
+    <h2 style="font-size:14px; font-weight:600;">Verification Records</h2>
+    <span class="badge badge-blue badge-pill">{{ verifications|length }} audits</span>
+  </div>
+  <div class="card-body" style="overflow-x:auto; padding:0;">
+    <table class="verif-table" style="min-width:800px;">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th style="width:18%;">Article</th>
+          <th style="text-align:center;">Local</th>
+          <th>Local Reasoning</th>
+          <th style="text-align:center;">Remote</th>
+          <th>Remote Reasoning</th>
+          <th style="text-align:center;">Diff</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in verifications %}
+        <tr class="{% if v.flagged %}flagged-row{% endif %}">
+          <td class="time-cell">
+            {{ v.timestamp.split('T')[0] }}<br>
+            {{ v.timestamp.split('T')[1][:5] }}
+          </td>
+          <td class="title-cell">
+            <a href="{{ v.article_url }}" target="_blank">{{ v.article_title }}</a>
+          </td>
+          <td class="score-cell">
+            <span class="score-badge {% if v.local_score >= 7 %}score-high{% elif v.local_score >= 4 %}score-med{% else %}score-low{% endif %}">
+              {{ v.local_score }}
+            </span>
+          </td>
+          <td class="reasoning-cell">{{ v.local_reasoning }}</td>
+          <td class="score-cell">
+            <span class="score-badge {% if v.remote_score >= 7 %}score-high{% elif v.remote_score >= 4 %}score-med{% else %}score-low{% endif %}">
+              {{ v.remote_score }}
+            </span>
+          </td>
+          <td class="reasoning-cell">{{ v.remote_reasoning }}</td>
+          <td class="score-cell">
+            {% if v.flagged %}
+              <span class="badge badge-red"><i class="mdi mdi-alert"></i> {{ v.discrepancy }}</span>
+            {% elif v.discrepancy == 0 %}
+              <span class="badge badge-green"><i class="mdi mdi-check"></i></span>
+            {% else %}
+              <span class="badge badge-orange">{{ v.discrepancy }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
 
 <script>
 async function optimizePrompt() {
-    const btn = document.getElementById('btn-optimize');
-    const newPromptArea = document.getElementById('new-prompt');
-    const testBtn = document.getElementById('btn-test');
-    
-    btn.classList.add('is-loading');
-    btn.disabled = true;
-    newPromptArea.value = "Generating optimized prompt based on recent failures... (this may take 30s)";
-    
-    try {
-        const resp = await fetch("{{ url_for('verification.optimize_prompt') }}", {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'}
-        });
-        const data = await resp.json();
-        
-        if (data.status === 'success') {
-            newPromptArea.value = data.new_prompt;
-            testBtn.disabled = false;
-        } else {
-            newPromptArea.value = "Error: " + data.message;
-        }
-    } catch (e) {
-        newPromptArea.value = "Network Error: " + e.message;
-    } finally {
-        btn.classList.remove('is-loading');
-        btn.disabled = false;
+  const btn = document.getElementById('btn-optimize');
+  const newPromptArea = document.getElementById('new-prompt');
+  const testBtn = document.getElementById('btn-test');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="mdi mdi-loading mdi-spin"></i> Generating...';
+  newPromptArea.value = "Generating optimized prompt based on recent failures... (this may take 30s)";
+
+  try {
+    const resp = await fetch("{{ url_for('verification.optimize_prompt') }}", {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'}
+    });
+    const data = await resp.json();
+
+    if (data.status === 'success') {
+      newPromptArea.value = data.new_prompt;
+      testBtn.disabled = false;
+    } else {
+      newPromptArea.value = "Error: " + data.message;
     }
+  } catch (e) {
+    newPromptArea.value = "Network Error: " + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="mdi mdi-magic-staff"></i> Generate Improved Prompt (from Failures)';
+  }
 }
 
 async function testPrompt() {
-    const btn = document.getElementById('btn-test');
-    const applyBtn = document.getElementById('btn-apply');
-    const prompt = document.getElementById('new-prompt').value;
-    const resultsBox = document.getElementById('test-results-box');
-    const tbody = document.getElementById('test-results-body');
-    
-    if (!prompt) return;
-    
-    btn.classList.add('is-loading');
-    btn.disabled = true;
-    resultsBox.classList.add('is-hidden');
-    tbody.innerHTML = "";
-    
-    try {
-        const resp = await fetch("{{ url_for('verification.test_optimized_prompt') }}", {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({prompt: prompt})
-        });
-        const data = await resp.json();
-        
-        if (data.status === 'success') {
-            data.results.forEach(r => {
-                const tr = document.createElement('tr');
-                const improvedClass = r.improved ? 'has-text-success' : (r.new_score === r.target_score ? 'has-text-success' : 'has-text-grey');
-                const icon = r.improved ? 'mdi-arrow-up-bold' : (r.new_score === r.target_score ? 'mdi-check' : 'mdi-minus');
-                
-                tr.innerHTML = `
-                    <td class="has-text-weight-medium">${r.title}</td>
-                    <td class="has-text-centered has-text-danger">${r.old_score}</td>
-                    <td class="has-text-centered has-text-info">${r.target_score}</td>
-                    <td class="has-text-centered has-text-weight-bold">${r.new_score}</td>
-                    <td class="has-text-centered ${improvedClass}">
-                        <span class="icon"><i class="mdi ${icon}"></i></span>
-                    </td>
-                    <td class="is-size-7">${r.reasoning}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-            resultsBox.classList.remove('is-hidden');
-            applyBtn.disabled = false;
-        } else {
-            alert("Error: " + data.message);
-        }
-    } catch (e) {
-        alert("Network Error: " + e.message);
-    } finally {
-        btn.classList.remove('is-loading');
-        btn.disabled = false;
+  const btn = document.getElementById('btn-test');
+  const applyBtn = document.getElementById('btn-apply');
+  const prompt = document.getElementById('new-prompt').value;
+  const resultsBox = document.getElementById('test-results-box');
+  const tbody = document.getElementById('test-results-body');
+
+  if (!prompt) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="mdi mdi-loading mdi-spin"></i> Testing...';
+  resultsBox.classList.remove('open');
+  tbody.innerHTML = "";
+
+  try {
+    const resp = await fetch("{{ url_for('verification.test_optimized_prompt') }}", {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({prompt: prompt})
+    });
+    const data = await resp.json();
+
+    if (data.status === 'success') {
+      data.results.forEach(r => {
+        const tr = document.createElement('tr');
+        const icon = r.improved ? 'mdi-arrow-up-bold' : (r.new_score === r.target_score ? 'mdi-check' : 'mdi-minus');
+        const cls = r.improved ? 'diff-ok' : (r.new_score === r.target_score ? 'diff-ok' : 'diff-warn');
+
+        tr.innerHTML = `
+          <td class="title-cell">${r.title}</td>
+          <td class="score-cell"><span class="score-badge score-flag">${r.old_score}</span></td>
+          <td class="score-cell"><span class="score-badge" style="background:#e6f6fc;color:#009fdf;">${r.target_score}</span></td>
+          <td class="score-cell"><span class="score-badge score-high">${r.new_score}</span></td>
+          <td class="score-cell ${cls}"><i class="mdi ${icon}"></i></td>
+          <td class="reasoning-cell">${r.reasoning}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      resultsBox.classList.add('open');
+      applyBtn.disabled = false;
+    } else {
+      alert("Error: " + data.message);
     }
+  } catch (e) {
+    alert("Network Error: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="mdi mdi-test-tube"></i> Test on Failures';
+  }
 }
 
 async function applyPrompt() {
-    const btn = document.getElementById('btn-apply');
-    const prompt = document.getElementById('new-prompt').value;
-    
-    if (!prompt || !confirm("Are you sure you want to overwrite the current prompt configuration?")) return;
-    
-    btn.classList.add('is-loading');
-    btn.disabled = true;
-    
-    try {
-        const resp = await fetch("{{ url_for('verification.apply_prompt') }}", {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({prompt: prompt})
-        });
-        const data = await resp.json();
-        
-        if (data.status === 'success') {
-            location.reload();
-        } else {
-            alert("Error: " + data.message);
-        }
-    } catch (e) {
-        alert("Network Error: " + e.message);
-    } finally {
-        btn.classList.remove('is-loading');
-        btn.disabled = false;
+  const btn = document.getElementById('btn-apply');
+  const prompt = document.getElementById('new-prompt').value;
+
+  if (!prompt || !confirm("Are you sure you want to overwrite the current prompt configuration?")) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="mdi mdi-loading mdi-spin"></i> Applying...';
+
+  try {
+    const resp = await fetch("{{ url_for('verification.apply_prompt') }}", {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({prompt: prompt})
+    });
+    const data = await resp.json();
+
+    if (data.status === 'success') {
+      location.reload();
+    } else {
+      alert("Error: " + data.message);
     }
+  } catch (e) {
+    alert("Network Error: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="mdi mdi-check"></i> Apply Changes';
+  }
 }
 </script>
 {% endblock %}
