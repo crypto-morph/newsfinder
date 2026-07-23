@@ -3,8 +3,8 @@ companies:
   url: https://bluecrestwellness.com/
 - name: RandoxHealth
   url: https://randoxhealth.com/en-GB/
-- name: Qured
-  url: https://www.qured.com/
+- name: Nuffield
+  url: https://www.nuffieldhealth.com/
 feeds:
 - name: BBC Health
   url: https://feeds.bbci.co.uk/news/health/rss.xml
@@ -67,13 +67,12 @@ pipeline:
     relevance: 6
     impact: 5
 llm:
-  provider: kiro  # Options: "ollama" or "kiro"
-  base_url: http://localhost:11434  # Used for embeddings (Ollama) even with kiro provider
-  model: null  # null = let kiro-cli use its default model
+  base_url: http://localhost:11434
+  model: null
   embedding_model: nomic-embed-text:latest
-  effort: low  # ACP effort level: low, medium, high (lower = faster/cheaper)
-  prompt_rules: []  # Custom rules/considerations for the AI prompt
-
+  provider: kiro
+  effort: low
+  prompt_rules: []
 storage:
   chroma_dir: chroma_db
   alerts_log: logs/alerts.log

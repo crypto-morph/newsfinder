@@ -3,14 +3,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [[ -f "${ROOT_DIR}/venv/bin/activate" ]]; then
-  # shellcheck disable=SC1091
-  source "${ROOT_DIR}/venv/bin/activate"
-else
-  echo "venv not found at ${ROOT_DIR}/venv; create it first."
-  exit 1
-fi
-
 command="${1:-}";
 if [[ -z "${command}" ]]; then
   echo "Usage: ./newsctl {start|stop|restart|status|reset|pipeline|profile|import}"
@@ -19,21 +11,21 @@ fi
 
 case "${command}" in
   start|stop|restart|status)
-    python "${ROOT_DIR}/scripts/ui_service.py" "${command}"
+    uv run "${ROOT_DIR}/scripts/ui_service.py" "${command}"
     ;;
   reset)
-    python "${ROOT_DIR}/scripts/ui_service.py" stop
-    python "${ROOT_DIR}/scripts/ui_service.py" start
+    uv run "${ROOT_DIR}/scripts/ui_service.py" stop
+    uv run "${ROOT_DIR}/scripts/ui_service.py" start
     ;;
   pipeline)
-    python "${ROOT_DIR}/scripts/run_pipeline.py"
+    uv run "${ROOT_DIR}/scripts/run_pipeline.py"
     ;;
   profile)
-    python "${ROOT_DIR}/scripts/run_profiler.py"
+    uv run "${ROOT_DIR}/scripts/run_profiler.py"
     ;;
   import)
     shift
-    python "${ROOT_DIR}/scripts/backfill_sitemaps.py" "$@"
+    uv run "${ROOT_DIR}/scripts/backfill_sitemaps.py" "$@"
     ;;
   *)
     echo "Unknown command: ${command}"
